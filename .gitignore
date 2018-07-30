@@ -1,3 +1,6 @@
+# nano swap files
+*.swp
+
 __pycache__/
 *.py[cod]
 

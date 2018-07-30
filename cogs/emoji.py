@@ -67,7 +67,18 @@ class Emotes:
 
 	@commands.command()
 	async def add(self, context, *args):
-		"""Adds an emoji to this server."""
+		"""Add a new emote to this server.
+
+		You can use it like this:
+		`add :thonkang:` (if you already have that emote)
+		`add rollsafe https://image.noelshack.com/fichiers/2017/06/1486495269-rollsafe.png`
+		`add speedtest <https://cdn.discordapp.com/emojis/379127000398430219.png>`
+
+		With a file attachment:
+		`add name` will upload a new emote using the first attachment as the image and call it `name`
+		`add` will upload a new emote using the first attachment as the image,
+		and its filename as the name
+		"""
 		try:
 			name, url = self.parse_add_command_args(context, args)
 		except commands.BadArgument as exception:
@@ -172,6 +183,11 @@ class Emotes:
 
 	@commands.command()
 	async def rename(self, context, old_name, new_name):
+		"""Rename an emote on this server.
+
+		old_name: the name of the emote to rename
+		new_name: what you'd like to rename it to
+		"""
 		emote = await self.disambiguate(context, old_name)
 		try:
 			await emote.edit(
@@ -186,6 +202,7 @@ class Emotes:
 
 	@commands.command()
 	async def list(self, context):
+		"""A list of all emotes on this server."""
 		emotes = sorted(
 			filter(lambda e: e.require_colons, context.guild.emojis),
 			key=lambda e: e.name.lower())

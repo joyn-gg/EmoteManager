@@ -176,10 +176,18 @@ class Emotes:
 			reason=f'Created by {utils.format_user(self.bot, author_id)}')
 
 	@commands.command()
-	async def remove(self, context, name):
-		emote = await self.disambiguate(context, name)
-		await emote.delete(reason=f'Removed by {utils.format_user(self.bot, context.author.id)}')
-		await context.send(f'Emote \:{emote.name}: successfully removed.')
+	async def remove(self, context, *names):
+		"""Remove an emote from this server.
+
+		names: the names of one or more emotes you'd like to remove.
+		"""
+		if len(names) == 1:
+			emote = await self.disambiguate(context, names[0])
+			await emote.delete(reason=f'Removed by {utils.format_user(self.bot, context.author.id)}')
+			await context.send(f'Emote \:{emote.name}: successfully removed.')
+		else:
+			for name in names:
+				await context.invoke(self.remove, name)
 
 	@commands.command()
 	async def rename(self, context, old_name, new_name):

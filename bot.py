@@ -27,6 +27,12 @@ class Bot(commands.AutoShardedBot):
 	async def on_ready(self):
 		logger.info('Logged on as {0} (ID: {0.id})'.format(self.user))
 
+	async def on_message(self, message):
+		if message.author.bot:
+			return
+
+		await self.process_commands(message)
+
 	# https://github.com/Rapptz/RoboDanny/blob/ca75fae7de132e55270e53d89bc19dd2958c2ae0/bot.py#L77-L85
 	async def on_command_error(self, context, error):
 		if isinstance(error, commands.NoPrivateMessage):

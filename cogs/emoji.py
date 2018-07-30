@@ -95,7 +95,6 @@ class Emotes:
 		try:
 			emote = await self.add_from_url(guild, name, url, author_id)
 		except discord.HTTPException as ex:
-			logger.error(traceback.format_exc())
 			return (
 				'An error occurred while creating the emote:\n'
 				+ utils.format_http_exception(ex))
@@ -206,6 +205,40 @@ class Emotes:
 			return (old_width * new_height//old_height, new_height)
 		return new_width, old_height * new_width//old_width
 
+	@commands.command()
+	async def remove(self, context, name):
+		emote = await self.disambiguate(context, name)
+		await emote.delete(reason=f'Removed by {utils.format_user(self.bot, context.author.id)}')
+		await context.send(f'Emote \:{emote.name}: successfully removed.')
+
+	async def disambiguate(self, context, name):
+		candidates = [e for e in context.guild.emojis if e.name.lower() == name.lower() and e.require_colons]
+		if not candidates:
+			raise errors.EmoteNotFoundError(name)
+
+		if len(candidates) == 1:
+			return candidates[0]
+
+		message = ['Multiple emotes were found with that name. Which one do you mean?']
+		for i, emote in enumerate(candidates, 1):
+			message.append(f'{i}. {emote} (\:{emote.name}:)')
+
+		await context.send('\n'.join(message))
+
+		def check(message):
+			try:
+				int(message.content)
+			except ValueError:
+				return False
+			else:
+				return message.author == context.author
+
+		try:
+			message = await self.bot.wait_for('message', check=check, timeout=30)
+		except asyncio.TimeoutError:
+			raise commands.UserInputError('Sorry, you took too long. Try again.')
+
+		return candidates[int(message.content)-1]
 
 
 def setup(bot):

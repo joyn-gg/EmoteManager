@@ -14,4 +14,6 @@
 			'botsfordiscord.com': None,
 		},
 	},
+
+	'user_agent': 'EmojiManagerBot (https://github.com/bmintz/emoji-manager-bot)',
 }

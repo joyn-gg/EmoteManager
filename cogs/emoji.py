@@ -157,6 +157,20 @@ class Emotes:
 		await emote.delete(reason=f'Removed by {utils.format_user(self.bot, context.author.id)}')
 		await context.send(f'Emote \:{emote.name}: successfully removed.')
 
+	@commands.command()
+	async def rename(self, context, old_name, new_name):
+		emote = await self.disambiguate(context, old_name)
+		try:
+			await emote.edit(
+				name=new_name,
+				reason=f'Renamed by {utils.format_user(self.bot, context.author.id)}')
+		except discord.HTTPException as ex:
+			return await context.send(
+				'An error occurred while renaming the emote:\n'
+				+ utils.format_http_exception(ex))
+
+		await context.send(f'Emote \:{old_name}: successfully renamed to \:{new_name}:')
+
 	async def disambiguate(self, context, name):
 		candidates = [e for e in context.guild.emojis if e.name.lower() == name.lower() and e.require_colons]
 		if not candidates:

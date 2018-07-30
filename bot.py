@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 
+import random
+import asyncio
 import logging
+import os.path
 import traceback
+from glob import glob
 
 import discord
+import aiofiles
 from discord.ext import commands
 
 logging.basicConfig(level=logging.WARNING)
@@ -26,6 +31,14 @@ class Bot(commands.AutoShardedBot):
 
 	async def on_ready(self):
 		logger.info('Logged on as {0} (ID: {0.id})'.format(self.user))
+		bot.loop.create_task(self.change_avatar_loop())
+
+	async def change_avatar_loop(self):
+		while await asyncio.sleep(30*60, True):
+			glob_pattern = os.path.join('avatars', '*')
+
+			async with aiofiles.open(random.choice(glob(glob_pattern)), 'rb') as f:
+				await self.user.edit(avatar=await f.read())
 
 	# https://github.com/Rapptz/RoboDanny/blob/ca75fae7de132e55270e53d89bc19dd2958c2ae0/bot.py#L77-L85
 	async def on_command_error(self, context, error):

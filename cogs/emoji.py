@@ -5,6 +5,7 @@ import io
 import imghdr
 import asyncio
 import logging
+import weakref
 import traceback
 import contextlib
 
@@ -23,6 +24,7 @@ from discord.ext import commands
 import utils
 import utils.image
 from utils import errors
+from utils.paginator import ListPaginator
 
 class Emotes:
 	def __init__(self, bot):
@@ -32,6 +34,17 @@ class Emotes:
 				self.bot.config['user_agent'] + ' '
 				+ self.bot.http.user_agent
 		})
+		# keep track of paginators so we can end them when the cog is unloaded
+		self.paginators = weakref.WeakSet()
+
+	def __unload(self):
+		self.bot.loop.create_task(self.http.close())
+
+		async def stop_all_paginators():
+			for paginator in self.paginators:
+				await paginator.stop()
+
+		self.bot.loop.create_task(stop_all_paginators())
 
 	async def __local_check(self, context):
 		if not context.guild:
@@ -170,6 +183,20 @@ class Emotes:
 				+ utils.format_http_exception(ex))
 
 		await context.send(f'Emote \:{old_name}: successfully renamed to \:{new_name}:')
+
+	@commands.command()
+	async def list(self, context):
+		emotes = sorted(
+			filter(lambda e: e.require_colons, context.guild.emojis),
+			key=lambda e: e.name.lower())
+
+		processed = []
+		for emote in emotes:
+			processed.append(f'{emote} (\:{emote.name}:)')
+
+		paginator = ListPaginator(context, processed)
+		self.paginators.add(paginator)
+		await paginator.begin()
 
 	async def disambiguate(self, context, name):
 		candidates = [e for e in context.guild.emojis if e.name.lower() == name.lower() and e.require_colons]

@@ -31,10 +31,25 @@ class Emotes:
 				self.bot.config['user_agent'] + ' '
 				+ self.bot.http.user_agent
 		})
+
 	async def __local_check(self, context):
-		return (
-			context.guild
-			and context.author.guild_permissions.manage_emojis)
+		if not context.guild:
+			await context.send(
+				f'{utils.SUCCESS_EMOTES[False]} Sorry, this command may only be used in a server.')
+			return False
+
+		if not context.author.guild_permissions.manage_emojis:
+			await context.send(
+				f'{utils.SUCCESS_EMOTES[False]} '
+				"Sorry, you don't have enough permissions to run this command. "
+				'You need the Manage Emojis permission.')
+			return False
+
+		return True
+
+	async def on_command_error(self, context, error):
+		if isinstance(error, errors.EmoteManagerError):
+			await context.send(str(error))
 
 	@commands.command()
 	async def add(self, context, *args):

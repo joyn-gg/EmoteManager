@@ -23,7 +23,7 @@ from discord.ext import commands
 import utils
 from utils import errors
 
-class Emoji:
+class Emotes:
 	def __init__(self, bot):
 		self.bot = bot
 		self.http = aiohttp.ClientSession(loop=self.bot.loop, read_timeout=30, headers={
@@ -209,4 +209,4 @@ class Emoji:
 
 
 def setup(bot):
-	bot.add_cog(Emoji(bot))
+	bot.add_cog(Emotes(bot))

@@ -9,14 +9,6 @@ import weakref
 import traceback
 import contextlib
 
-logger = logging.getLogger(__name__)
-
-try:
-	from wand.image import Image
-except ImportError:
-	logger.warn('failed to import wand.image. Image manipulation functions will be unavailable.')
-	Image = None
-
 import aiohttp
 import discord
 from discord.ext import commands
@@ -25,6 +17,8 @@ import utils
 import utils.image
 from utils import errors
 from utils.paginator import ListPaginator
+
+logger = logging.getLogger(__name__)
 
 class Emotes:
 	def __init__(self, bot):
@@ -212,14 +206,18 @@ class Emotes:
 
 	@commands.command()
 	async def list(self, context):
-		"""A list of all emotes on this server."""
+		"""A list of all emotes on this server.
+
+		The list shows each emote and its raw form.
+		"""
 		emotes = sorted(
 			filter(lambda e: e.require_colons, context.guild.emojis),
 			key=lambda e: e.name.lower())
 
 		processed = []
 		for emote in emotes:
-			processed.append(f'{emote} (\:{emote.name}:)')
+			raw = str(emote).replace(':', '\:')
+			processed.append(f'{emote} {raw}')
 
 		paginator = ListPaginator(context, processed)
 		self.paginators.add(paginator)

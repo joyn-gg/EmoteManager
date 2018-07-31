@@ -52,11 +52,14 @@ class Emotes:
 				f'{utils.SUCCESS_EMOTES[False]} Sorry, this command may only be used in a server.')
 			return False
 
-		if not context.author.guild_permissions.manage_emojis:
+		if (
+			not context.author.guild_permissions.manage_emojis
+			or not context.guild.me.guild_permissions.manage_emojis
+		):
 			await context.send(
 				f'{utils.SUCCESS_EMOTES[False]} '
 				"Sorry, you don't have enough permissions to run this command. "
-				'You need the Manage Emojis permission.')
+				'You and I both need the Manage Emojis permission.')
 			return False
 
 		return True

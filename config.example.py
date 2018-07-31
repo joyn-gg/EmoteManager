@@ -1,8 +1,9 @@
 {
 	'cogs': (
-		'cogs.emoji',
+		'cogs.emote',
 		'ben_cogs.debug',
 		'ben_cogs.misc',
+		'ben_cogs.debug'
 		'jishaku',
 	),
 

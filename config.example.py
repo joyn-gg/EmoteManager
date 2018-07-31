@@ -1,6 +1,7 @@
 {
 	'cogs': (
 		'cogs.emote',
+		'cogs.meta',
 		'ben_cogs.debug',
 		'ben_cogs.misc',
 		'ben_cogs.debug'

@@ -48,25 +48,24 @@ class Emotes:
 
 	async def __local_check(self, context):
 		if not context.guild:
-			await context.send(
-				f'{utils.SUCCESS_EMOTES[False]} Sorry, this command may only be used in a server.')
+			raise commands.NoPrivateMessage
 			return False
 
 		if (
 			not context.author.guild_permissions.manage_emojis
 			or not context.guild.me.guild_permissions.manage_emojis
 		):
-			await context.send(
-				f'{utils.SUCCESS_EMOTES[False]} '
-				"Sorry, you don't have enough permissions to run this command. "
-				'You and I both need the Manage Emojis permission.')
-			return False
+			raise errors.MissingManageEmojisPermission
 
 		return True
 
 	async def on_command_error(self, context, error):
-		if isinstance(error, errors.EmoteManagerError):
+		if isinstance(error, (errors.EmoteManagerError, errors.MissingManageEmojisPermission)):
 			await context.send(str(error))
+
+		if isinstance(error, commands.NoPrivateMessage):
+			await context.send(
+				f'{utils.SUCCESS_EMOTES[False]} Sorry, this command may only be used in a server.')
 
 	@commands.command()
 	async def add(self, context, *args):

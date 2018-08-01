@@ -8,6 +8,7 @@ import logging
 import weakref
 import traceback
 import contextlib
+import urllib.parse
 
 import aiohttp
 import discord
@@ -126,10 +127,37 @@ class Emotes:
 
 		return name, url
 
-	async def add_safe(self, guild, name, url, author_id):
+	@commands.command(name='add-from-ec', aliases=['addfromec'])
+	async def add_from_ec(self, context, name):
+		"""Copies an emote from Emoji Connoisseur to your server.
+
+		The list of possible emotes you can copy is here:
+		https://emoji-connoissuer.python-for.life/list
+		"""
+		async with self.http.get(
+			self.bot.config['ec_api_url'] + '/emote/' + urllib.parse.quote(name, safe='')
+		) as resp:
+			print(resp.url)
+			if resp.status == 404:
+				return await context.send("Emote not found in Emoji Connoisseur's database.")
+
+			emote = await resp.json()
+
+		reason = (
+			f'Added from Emoji Connoisseur by {utils.format_user(self.bot, context.author.id)}. '
+			f'Original emote author: {utils.format_user(self.bot, int(emote["author"]))}')
+
+		async with context.typing():
+			message = await self.add_safe(context.guild, name, utils.emote.url(
+				emote['id'], animated=emote['animated']
+			), context.author.id, reason=reason)
+
+		await context.send(message)
+
+	async def add_safe(self, guild, name, url, author_id, *, reason=None):
 		"""Try to add an emote. Returns a string that should be sent to the user."""
 		try:
-			emote = await self.add_from_url(guild, name, url, author_id)
+			emote = await self.add_from_url(guild, name, url, author_id, reason=reason)
 		except discord.HTTPException as ex:
 			return (
 				'An error occurred while creating the emote:\n'
@@ -141,9 +169,9 @@ class Emotes:
 		else:
 			return f'Emote {emote} successfully created.'
 
-	async def add_from_url(self, guild, name, url, author_id):
+	async def add_from_url(self, guild, name, url, author_id, *, reason=None):
 		image_data = await self.fetch_emote(url)
-		emote = await self.create_emote_from_bytes(guild, name, author_id, image_data)
+		emote = await self.create_emote_from_bytes(guild, name, author_id, image_data, reason=reason)
 
 		return emote
 
@@ -161,15 +189,17 @@ class Emotes:
 				raise errors.HTTPException(response.status)
 			return io.BytesIO(await response.read())
 
-	async def create_emote_from_bytes(self, guild, name, author_id, image_data: io.BytesIO):
+	async def create_emote_from_bytes(self, guild, name, author_id, image_data: io.BytesIO, *, reason=None):
 		# resize_until_small is normally blocking, because wand is.
 		# run_in_executor is magic that makes it non blocking somehow.
 		# also, None as the executor arg means "use the loop's default executor"
 		image_data = await self.bot.loop.run_in_executor(None, utils.image.resize_until_small, image_data)
+		if reason is None:
+			reason = f'Created by {utils.format_user(self.bot, author_id)}'
 		return await guild.create_custom_emoji(
 			name=name,
 			image=image_data.read(),
-			reason=f'Created by {utils.format_user(self.bot, author_id)}')
+			reason=reason)
 
 	@commands.command()
 	async def remove(self, context, *names):

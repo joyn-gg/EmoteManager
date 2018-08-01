@@ -18,4 +18,6 @@
 	},
 
 	'user_agent': 'EmojiManagerBot (https://github.com/bmintz/emoji-manager-bot)',
+
+	'ec_api_url': 'https://emoji-connoisseur.python-for.life/api/v0',
 }

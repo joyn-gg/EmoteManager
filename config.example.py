@@ -1,6 +1,6 @@
 {
 	'description':
-		'Emote Manager lets you manage custom server emotes from your phone. '
+		'Emote Manager lets you manage custom server emotes from your phone.\n\n'
 		'NOTE: Most commands will be unavailable until both you and the bot have the '
 		'"Manage Emojis" permission.',
 

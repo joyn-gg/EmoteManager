@@ -4,6 +4,8 @@
 		'NOTE: Most commands will be unavailable until both you and the bot have the '
 		'"Manage Emojis" permission.',
 
+	'support_server_invite': 'https://discord.gg/some-invite',
+
 	'cogs': (
 		'cogs.emote',
 		'cogs.meta',

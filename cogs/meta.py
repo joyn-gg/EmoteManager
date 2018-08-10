@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 
+import contextlib
+
 import discord
 from discord.ext import commands
 
@@ -24,5 +26,20 @@ class Meta:
 
 		await context.send('<%s>' % discord.utils.oauth_url(self.bot.user.id, permissions))
 
+	@commands.command()
+	async def support(self, context):
+		"""Directs you to the support server."""
+		try:
+			await context.author.send(self.bot.config['support_server_invite'])
+			with contextlib.suppress(discord.HTTPException):
+				await context.message.add_reaction('📬')
+		except discord.Forbidden:
+			with contextlib.suppress(discord.HTTPException):
+				await context.message.add_reaction('❌')
+			await context.send('Unable to send invite in DMs. Please allow DMs from server members.')
+
 def setup(bot):
 	bot.add_cog(Meta(bot))
+
+	if not bot.config.get('support_server_invite'):
+		bot.remove_command('support')

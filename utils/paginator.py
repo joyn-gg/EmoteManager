@@ -14,8 +14,8 @@ class Paginator:
 	def __init__(self, ctx: Context, pages: typing.Iterable, *, timeout=300, delete_message=False, predicate=None,
 				 delete_message_on_timeout=False, text_message=None):
 		if predicate is None:
-			def predicate(_, user):
-				return user == ctx.message.author
+			def predicate(reaction, user):
+				return user == ctx.message.author and reaction.message == self._message
 
 		self.pages = list(pages)
 		self.predicate = predicate

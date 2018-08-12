@@ -44,7 +44,9 @@ class Emotes:
 	async def __local_check(self, context):
 		if not context.guild:
 			raise commands.NoPrivateMessage
-			return False
+
+		if context.command is self.list:
+			return True
 
 		if (
 			not context.author.guild_permissions.manage_emojis
@@ -52,7 +54,7 @@ class Emotes:
 		):
 			raise errors.MissingManageEmojisPermission
 
-		return context.command is self.list
+		return True
 
 	async def on_command_error(self, context, error):
 		if isinstance(error, (errors.EmoteManagerError, errors.MissingManageEmojisPermission)):

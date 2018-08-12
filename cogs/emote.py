@@ -52,7 +52,7 @@ class Emotes:
 		):
 			raise errors.MissingManageEmojisPermission
 
-		return True
+		return context.command is self.list
 
 	async def on_command_error(self, context, error):
 		if isinstance(error, (errors.EmoteManagerError, errors.MissingManageEmojisPermission)):

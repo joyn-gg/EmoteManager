@@ -52,6 +52,7 @@ class Emotes:
 			not context.author.guild_permissions.manage_emojis
 			or not context.guild.me.guild_permissions.manage_emojis
 		):
+			logger.error('emote: check failed')
 			raise errors.MissingManageEmojisPermission
 
 		return True
@@ -139,7 +140,6 @@ class Emotes:
 		async with self.http.get(
 			self.bot.config['ec_api_url'] + '/emote/' + urllib.parse.quote(name, safe='')
 		) as resp:
-			print(resp.url)
 			if resp.status == 404:
 				return await context.send("Emote not found in Emoji Connoisseur's database.")
 

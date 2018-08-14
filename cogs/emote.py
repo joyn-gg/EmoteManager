@@ -141,6 +141,9 @@ class Emotes:
 		) as resp:
 			if resp.status == 404:
 				return await context.send("Emote not found in Emoji Connoisseur's database.")
+			if resp.status != 200:
+				return await context.send(
+					f'Error: the Emoji Connoisseur API returned status code {resp.status}')
 
 			emote = await resp.json()
 

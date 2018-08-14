@@ -52,7 +52,6 @@ class Emotes:
 			not context.author.guild_permissions.manage_emojis
 			or not context.guild.me.guild_permissions.manage_emojis
 		):
-			logger.error('emote: check failed')
 			raise errors.MissingManageEmojisPermission
 
 		return True

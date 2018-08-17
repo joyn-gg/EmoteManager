@@ -139,7 +139,7 @@ class Emotes:
 		The list of possible emotes you can copy is here:
 		https://emoji-connoissuer.python-for.life/list
 		"""
-
+		name = name.strip(':')
 		try:
 			emote = await self.aioec.emote(name)
 		except aioec.NotFound:
@@ -207,27 +207,29 @@ class Emotes:
 			reason=reason)
 
 	@commands.command(aliases=('delete', 'delet', 'rm'))
-	async def remove(self, context, *names):
+	async def remove(self, context, *emotes):
 		"""Remove an emote from this server.
 
-		names: the names of one or more emotes you'd like to remove.
+		emotes: the name of an emote or of one or more emotes you'd like to remove.
 		"""
-		if len(names) == 1:
-			emote = await self.disambiguate(context, names[0])
+		if len(emotes) == 1:
+			emote = await self.parse_emote(context, emotes[0])
 			await emote.delete(reason=f'Removed by {utils.format_user(self.bot, context.author.id)}')
 			await context.send(f'Emote \:{emote.name}: successfully removed.')
 		else:
-			for name in names:
-				await context.invoke(self.remove, name)
+			for emote in emotes:
+				await context.invoke(self.remove, emote)
+			with contextlib.suppress(discord.HTTPException):
+				await context.message.add_reaction('✅')
 
 	@commands.command(aliases=('mv',))
-	async def rename(self, context, old_name, new_name):
+	async def rename(self, context, old, new_name):
 		"""Rename an emote on this server.
 
-		old_name: the name of the emote to rename
+		old: the name of the emote to rename, or the emote itself
 		new_name: what you'd like to rename it to
 		"""
-		emote = await self.disambiguate(context, old_name)
+		emote = await self.parse_emote(context, old)
 		try:
 			await emote.edit(
 				name=new_name,
@@ -237,9 +239,9 @@ class Emotes:
 				'An error occurred while renaming the emote:\n'
 				+ utils.format_http_exception(ex))
 
-		await context.send(f'Emote \:{old_name}: successfully renamed to \:{new_name}:')
+		await context.send(f'Emote successfully renamed to \:{new_name}:')
 
-	@commands.command(aliases=('ls',))
+	@commands.command(aliases=('ls', 'dir'))
 	async def list(self, context):
 		"""A list of all emotes on this server.
 
@@ -258,7 +260,18 @@ class Emotes:
 		self.paginators.add(paginator)
 		await paginator.begin()
 
+	async def parse_emote(self, context, name_or_emote):
+		match = utils.emote.RE_CUSTOM_EMOTE.match(name_or_emote)
+		if match:
+			id = int(match.group('id'))
+			emote = discord.utils.get(context.guild.emojis, id=id)
+			if emote:
+				return emote
+		name = name_or_emote
+		return await self.disambiguate(context, name)
+
 	async def disambiguate(self, context, name):
+		name = name.strip(':')  # in case the user tries :foo: and foo is animated
 		candidates = [e for e in context.guild.emojis if e.name.lower() == name.lower() and e.require_colons]
 		if not candidates:
 			raise errors.EmoteNotFoundError(name)

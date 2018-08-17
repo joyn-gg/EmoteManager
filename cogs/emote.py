@@ -206,7 +206,7 @@ class Emotes:
 			image=image_data.read(),
 			reason=reason)
 
-	@commands.command()
+	@commands.command(aliases=('delete', 'delet', 'rm'))
 	async def remove(self, context, *names):
 		"""Remove an emote from this server.
 
@@ -220,7 +220,7 @@ class Emotes:
 			for name in names:
 				await context.invoke(self.remove, name)
 
-	@commands.command()
+	@commands.command(aliases=('mv',))
 	async def rename(self, context, old_name, new_name):
 		"""Rename an emote on this server.
 
@@ -239,7 +239,7 @@ class Emotes:
 
 		await context.send(f'Emote \:{old_name}: successfully renamed to \:{new_name}:')
 
-	@commands.command()
+	@commands.command(aliases=('ls',))
 	async def list(self, context):
 		"""A list of all emotes on this server.
 

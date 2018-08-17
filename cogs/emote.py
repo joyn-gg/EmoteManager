@@ -10,6 +10,7 @@ import traceback
 import contextlib
 import urllib.parse
 
+import aioec
 import aiohttp
 import discord
 from discord.ext import commands
@@ -29,11 +30,13 @@ class Emotes:
 				self.bot.config['user_agent'] + ' '
 				+ self.bot.http.user_agent
 		})
+		self.aioec = aioec.Client(loop=self.bot.loop)
 		# keep track of paginators so we can end them when the cog is unloaded
 		self.paginators = weakref.WeakSet()
 
 	def __unload(self):
 		self.bot.loop.create_task(self.http.close())
+		self.bot.loop.create_task(self.aioec.close())
 
 		async def stop_all_paginators():
 			for paginator in self.paginators:
@@ -136,24 +139,22 @@ class Emotes:
 		The list of possible emotes you can copy is here:
 		https://emoji-connoissuer.python-for.life/list
 		"""
-		async with self.http.get(
-			self.bot.config['ec_api_url'] + '/emote/' + urllib.parse.quote(name, safe='')
-		) as resp:
-			if resp.status == 404:
-				return await context.send("Emote not found in Emoji Connoisseur's database.")
-			if resp.status != 200:
-				return await context.send(
-					f'Error: the Emoji Connoisseur API returned status code {resp.status}')
 
-			emote = await resp.json()
+		try:
+			emote = await self.aioec.emote(name)
+		except aioec.NotFound:
+			return await context.send("Emote not found in Emoji Connoisseur's database.")
+		except aioec.HttpException as exception:
+			return await context.send(
+				f'Error: the Emoji Connoisseur API returned status code {exception.status}')
 
 		reason = (
 			f'Added from Emoji Connoisseur by {utils.format_user(self.bot, context.author.id)}. '
-			f'Original emote author: {utils.format_user(self.bot, int(emote["author"]))}')
+			f'Original emote author: {utils.format_user(self.bot, emote.author)}')
 
 		async with context.typing():
 			message = await self.add_safe(context.guild, name, utils.emote.url(
-				emote['id'], animated=emote['animated']
+				emote.id, animated=emote.animated
 			), context.author.id, reason=reason)
 
 		await context.send(message)

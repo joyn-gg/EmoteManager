@@ -32,10 +32,10 @@ class Meta:
 		try:
 			await context.author.send(self.bot.config['support_server_invite'])
 			with contextlib.suppress(discord.HTTPException):
-				await context.message.add_reaction('📬')
+				await context.message.add_reaction('📬')  # TODO make this emoji configurable too
 		except discord.Forbidden:
 			with contextlib.suppress(discord.HTTPException):
-				await context.message.add_reaction('❌')
+				await context.message.add_reaction(utils.SUCCESS_EMOJIS[True])
 			await context.send('Unable to send invite in DMs. Please allow DMs from server members.')
 
 def setup(bot):

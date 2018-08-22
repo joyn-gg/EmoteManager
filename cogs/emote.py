@@ -65,7 +65,7 @@ class Emotes:
 
 		if isinstance(error, commands.NoPrivateMessage):
 			await context.send(
-				f'{utils.SUCCESS_EMOTES[False]} Sorry, this command may only be used in a server.')
+				f'{utils.SUCCESS_EMOJIS[False]} Sorry, this command may only be used in a server.')
 
 	@commands.command()
 	async def add(self, context, *args):
@@ -220,7 +220,7 @@ class Emotes:
 			for emote in emotes:
 				await context.invoke(self.remove, emote)
 			with contextlib.suppress(discord.HTTPException):
-				await context.message.add_reaction('✅')
+				await context.message.add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@commands.command(aliases=('mv',))
 	async def rename(self, context, old, new_name):

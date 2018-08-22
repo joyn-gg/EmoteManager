@@ -5,11 +5,6 @@ import discord
 
 """various utilities for use within the bot"""
 
-"""Emotes used to indicate success/failure. You can obtain these from the discordbots.org guild,
-but I uploaded them to my test server
-so that both the staging and the stable versions of the bot can use them"""
-SUCCESS_EMOTES = ('<:error:416845770239508512>', '<:success:416845760810844160>')
-
 def format_user(bot, id, *, mention=False):
 	"""Format a user ID for human readable display."""
 	user = bot.get_user(id)

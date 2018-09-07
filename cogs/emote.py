@@ -45,7 +45,7 @@ class Emotes:
 		self.bot.loop.create_task(stop_all_paginators())
 
 	async def __local_check(self, context):
-		if not context.guild:
+		if not context.guild or not isinstance(context.author, discord.Member):
 			raise commands.NoPrivateMessage
 
 		if context.command is self.list:

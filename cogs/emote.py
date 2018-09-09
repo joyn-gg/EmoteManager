@@ -134,22 +134,22 @@ class Emotes:
 
 	@commands.command(name='add-from-ec', aliases=['addfromec'])
 	async def add_from_ec(self, context, name):
-		"""Copies an emote from Emoji Connoisseur to your server.
+		"""Copies an emote from Emote Collector to your server.
 
 		The list of possible emotes you can copy is here:
-		https://emoji-connoissuer.python-for.life/list
+		https://emote-collector.python-for.life/list
 		"""
 		name = name.strip(':')
 		try:
 			emote = await self.aioec.emote(name)
 		except aioec.NotFound:
-			return await context.send("Emote not found in Emoji Connoisseur's database.")
+			return await context.send("Emote not found in Emote Collector's database.")
 		except aioec.HttpException as exception:
 			return await context.send(
-				f'Error: the Emoji Connoisseur API returned status code {exception.status}')
+				f'Error: the Emote Collector API returned status code {exception.status}')
 
 		reason = (
-			f'Added from Emoji Connoisseur by {utils.format_user(self.bot, context.author.id)}. '
+			f'Added from Emote Collector by {utils.format_user(self.bot, context.author.id)}. '
 			f'Original emote author: {utils.format_user(self.bot, emote.author)}')
 
 		async with context.typing():

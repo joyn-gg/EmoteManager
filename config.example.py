@@ -24,9 +24,7 @@
 		},
 	},
 
-	'user_agent': 'EmojiManagerBot (https://github.com/bmintz/emoji-manager-bot)',
-
-	'ec_api_url': 'https://emoji-connoisseur.python-for.life/api/v0',
+	'user_agent': 'EmoteManagerBot (https://github.com/bmintz/emote-manager-bot)',
 
 	# emotes that the bot may use to respond to you
 	# If not provided, the bot will use ('❌', '✅') instead.

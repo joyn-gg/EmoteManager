@@ -81,11 +81,7 @@ class Emotes:
 		`add` will upload a new emote using the first attachment as the image,
 		and its filename as the name
 		"""
-		try:
-			name, url = self.parse_add_command_args(context, args)
-		except commands.BadArgument as exception:
-			return await context.send(exception)
-
+		name, url = self.parse_add_command_args(context, args)
 		async with context.typing():
 			message = await self.add_safe(context.guild, name, url, context.message.author.id)
 		await context.send(message)
@@ -133,12 +129,17 @@ class Emotes:
 		return name, url
 
 	@commands.command(name='add-from-ec', aliases=['addfromec'])
-	async def add_from_ec(self, context, name):
-		"""Copies an emote from Emote Collector to your server.
+	async def add_from_ec(self, context, name, *names):
+		"""Copies one or more emotes from Emote Collector to your server.
 
 		The list of possible emotes you can copy is here:
 		https://emote-collector.python-for.life/list
 		"""
+		if names:
+			for name in (name,) + names:
+				await context.invoke(self.add_from_ec, name)
+			return
+
 		name = name.strip(':')
 		try:
 			emote = await self.aioec.emote(name)
@@ -207,17 +208,17 @@ class Emotes:
 			reason=reason)
 
 	@commands.command(aliases=('delete', 'delet', 'rm'))
-	async def remove(self, context, *emotes):
+	async def remove(self, context, emote, *emotes):
 		"""Remove an emote from this server.
 
 		emotes: the name of an emote or of one or more emotes you'd like to remove.
 		"""
-		if len(emotes) == 1:
-			emote = await self.parse_emote(context, emotes[0])
+		if not emotes:
+			emote = await self.parse_emote(context, emote)
 			await emote.delete(reason=f'Removed by {utils.format_user(self.bot, context.author.id)}')
 			await context.send(f'Emote \:{emote.name}: successfully removed.')
 		else:
-			for emote in emotes:
+			for emote in (emote,) + emotes:
 				await context.invoke(self.remove, emote)
 			with contextlib.suppress(discord.HTTPException):
 				await context.message.add_reaction(utils.SUCCESS_EMOJIS[True])

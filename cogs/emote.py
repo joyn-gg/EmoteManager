@@ -67,7 +67,7 @@ class Emotes:
 			await context.send(
 				f'{utils.SUCCESS_EMOJIS[False]} Sorry, this command may only be used in a server.')
 
-	@commands.command()
+	@commands.command(usage='[name] <image URL or custom emote>')
 	async def add(self, context, *args):
 		"""Add a new emote to this server.
 

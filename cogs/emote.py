@@ -112,7 +112,7 @@ class Emotes:
 			if match is None:
 				url = utils.strip_angle_brackets(args[1])
 			else:
-				url = utils.emote.url(match.group('id'))
+				url = utils.emote.url(match['id'], animated=match['animated'])
 
 			return name, url
 

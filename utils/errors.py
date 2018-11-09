@@ -11,7 +11,7 @@ class MissingManageEmojisPermission(commands.MissingPermissions):
 
 	def __init__(self):
 		super(Exception, self).__init__(
-			f'{utils.SUCCESS_EMOTES[False]} '
+			f'{utils.SUCCESS_EMOJIS[False]} '
 			"Sorry, you don't have enough permissions to run this command. "
 			'You and I both need the Manage Emojis permission.')
 

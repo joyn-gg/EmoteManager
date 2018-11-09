@@ -11,15 +11,12 @@ from discord.ext.commands import Context
 
 
 class Paginator:
-	def __init__(self, ctx: Context, pages: typing.Iterable, *, timeout=300, delete_message=False, predicate=None,
+	def __init__(self, ctx: Context, pages: typing.Iterable, *, timeout=300, delete_message=False,
 				 delete_message_on_timeout=False, text_message=None):
-		if predicate is None:
-			def predicate(_, user):
-				return user == ctx.message.author
 
 		self.pages = list(pages)
-		self.predicate = predicate
 		self.timeout = timeout
+		self.author = ctx.author
 		self.target = ctx.channel
 		self.delete_msg = delete_message
 		self.delete_msg_timeout = delete_message_on_timeout
@@ -41,6 +38,15 @@ class Paginator:
 
 		self._page = None
 
+	def react_check(self, reaction, user):
+		if user is None or user != self.author:
+			return False
+
+		if reaction.message.id != self._message.id:
+			return False
+
+		return bool(discord.utils.find(lambda emoji: reaction.emoji == emoji, self.navigation))
+
 	async def begin(self):
 		"""Starts pagination"""
 		self._stopped = False
@@ -50,7 +56,10 @@ class Paginator:
 			await self._message.add_reaction(button)
 		while not self._stopped:
 			try:
-				reaction, user = await self._client.wait_for('reaction_add', check=self.predicate, timeout=self.timeout)
+				reaction, user = await self._client.wait_for(
+					'reaction_add',
+					check=self.react_check,
+					timeout=self.timeout)
 			except asyncio.TimeoutError:
 				await self.stop(delete=self.delete_msg_timeout)
 				continue

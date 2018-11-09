@@ -8,7 +8,9 @@ import logging
 import weakref
 import traceback
 import contextlib
+import urllib.parse
 
+import aioec
 import aiohttp
 import discord
 from discord.ext import commands
@@ -28,11 +30,13 @@ class Emotes:
 				self.bot.config['user_agent'] + ' '
 				+ self.bot.http.user_agent
 		})
+		self.aioec = aioec.Client(loop=self.bot.loop)
 		# keep track of paginators so we can end them when the cog is unloaded
 		self.paginators = weakref.WeakSet()
 
 	def __unload(self):
 		self.bot.loop.create_task(self.http.close())
+		self.bot.loop.create_task(self.aioec.close())
 
 		async def stop_all_paginators():
 			for paginator in self.paginators:
@@ -41,9 +45,11 @@ class Emotes:
 		self.bot.loop.create_task(stop_all_paginators())
 
 	async def __local_check(self, context):
-		if not context.guild:
+		if not context.guild or not isinstance(context.author, discord.Member):
 			raise commands.NoPrivateMessage
-			return False
+
+		if context.command is self.list:
+			return True
 
 		if context.command is self.list:
 			return True
@@ -62,9 +68,9 @@ class Emotes:
 
 		if isinstance(error, commands.NoPrivateMessage):
 			await context.send(
-				f'{utils.SUCCESS_EMOTES[False]} Sorry, this command may only be used in a server.')
+				f'{utils.SUCCESS_EMOJIS[False]} Sorry, this command may only be used in a server.')
 
-	@commands.command()
+	@commands.command(usage='[name] <image URL or custom emote>')
 	async def add(self, context, *args):
 		"""Add a new emote to this server.
 
@@ -78,11 +84,7 @@ class Emotes:
 		`add` will upload a new emote using the first attachment as the image,
 		and its filename as the name
 		"""
-		try:
-			name, url = self.parse_add_command_args(context, args)
-		except commands.BadArgument as exception:
-			return await context.send(exception)
-
+		name, url = self.parse_add_command_args(context, args)
 		async with context.typing():
 			message = await self.add_safe(context.guild, name, url, context.message.author.id)
 		await context.send(message)
@@ -113,7 +115,7 @@ class Emotes:
 			if match is None:
 				url = utils.strip_angle_brackets(args[1])
 			else:
-				url = utils.emote.url(match.group('id'))
+				url = utils.emote.url(match['id'], animated=match['animated'])
 
 			return name, url
 
@@ -129,10 +131,42 @@ class Emotes:
 
 		return name, url
 
-	async def add_safe(self, guild, name, url, author_id):
+	@commands.command(name='add-from-ec', aliases=['addfromec'])
+	async def add_from_ec(self, context, name, *names):
+		"""Copies one or more emotes from Emote Collector to your server.
+
+		The list of possible emotes you can copy is here:
+		https://emote-collector.python-for.life/list
+		"""
+		if names:
+			for name in (name,) + names:
+				await context.invoke(self.add_from_ec, name)
+			return
+
+		name = name.strip(':')
+		try:
+			emote = await self.aioec.emote(name)
+		except aioec.NotFound:
+			return await context.send("Emote not found in Emote Collector's database.")
+		except aioec.HttpException as exception:
+			return await context.send(
+				f'Error: the Emote Collector API returned status code {exception.status}')
+
+		reason = (
+			f'Added from Emote Collector by {utils.format_user(self.bot, context.author.id)}. '
+			f'Original emote author: {utils.format_user(self.bot, emote.author)}')
+
+		async with context.typing():
+			message = await self.add_safe(context.guild, name, utils.emote.url(
+				emote.id, animated=emote.animated
+			), context.author.id, reason=reason)
+
+		await context.send(message)
+
+	async def add_safe(self, guild, name, url, author_id, *, reason=None):
 		"""Try to add an emote. Returns a string that should be sent to the user."""
 		try:
-			emote = await self.add_from_url(guild, name, url, author_id)
+			emote = await self.add_from_url(guild, name, url, author_id, reason=reason)
 		except discord.HTTPException as ex:
 			return (
 				'An error occurred while creating the emote:\n'
@@ -144,9 +178,9 @@ class Emotes:
 		else:
 			return f'Emote {emote} successfully created.'
 
-	async def add_from_url(self, guild, name, url, author_id):
+	async def add_from_url(self, guild, name, url, author_id, *, reason=None):
 		image_data = await self.fetch_emote(url)
-		emote = await self.create_emote_from_bytes(guild, name, author_id, image_data)
+		emote = await self.create_emote_from_bytes(guild, name, author_id, image_data, reason=reason)
 
 		return emote
 
@@ -164,38 +198,42 @@ class Emotes:
 				raise errors.HTTPException(response.status)
 			return io.BytesIO(await response.read())
 
-	async def create_emote_from_bytes(self, guild, name, author_id, image_data: io.BytesIO):
+	async def create_emote_from_bytes(self, guild, name, author_id, image_data: io.BytesIO, *, reason=None):
 		# resize_until_small is normally blocking, because wand is.
 		# run_in_executor is magic that makes it non blocking somehow.
 		# also, None as the executor arg means "use the loop's default executor"
 		image_data = await self.bot.loop.run_in_executor(None, utils.image.resize_until_small, image_data)
+		if reason is None:
+			reason = f'Created by {utils.format_user(self.bot, author_id)}'
 		return await guild.create_custom_emoji(
 			name=name,
 			image=image_data.read(),
-			reason=f'Created by {utils.format_user(self.bot, author_id)}')
+			reason=reason)
 
-	@commands.command()
-	async def remove(self, context, *names):
+	@commands.command(aliases=('delete', 'delet', 'rm'))
+	async def remove(self, context, emote, *emotes):
 		"""Remove an emote from this server.
 
-		names: the names of one or more emotes you'd like to remove.
+		emotes: the name of an emote or of one or more emotes you'd like to remove.
 		"""
-		if len(names) == 1:
-			emote = await self.disambiguate(context, names[0])
+		if not emotes:
+			emote = await self.parse_emote(context, emote)
 			await emote.delete(reason=f'Removed by {utils.format_user(self.bot, context.author.id)}')
 			await context.send(f'Emote \:{emote.name}: successfully removed.')
 		else:
-			for name in names:
-				await context.invoke(self.remove, name)
+			for emote in (emote,) + emotes:
+				await context.invoke(self.remove, emote)
+			with contextlib.suppress(discord.HTTPException):
+				await context.message.add_reaction(utils.SUCCESS_EMOJIS[True])
 
-	@commands.command()
-	async def rename(self, context, old_name, new_name):
+	@commands.command(aliases=('mv',))
+	async def rename(self, context, old, new_name):
 		"""Rename an emote on this server.
 
-		old_name: the name of the emote to rename
+		old: the name of the emote to rename, or the emote itself
 		new_name: what you'd like to rename it to
 		"""
-		emote = await self.disambiguate(context, old_name)
+		emote = await self.parse_emote(context, old)
 		try:
 			await emote.edit(
 				name=new_name,
@@ -205,9 +243,9 @@ class Emotes:
 				'An error occurred while renaming the emote:\n'
 				+ utils.format_http_exception(ex))
 
-		await context.send(f'Emote \:{old_name}: successfully renamed to \:{new_name}:')
+		await context.send(f'Emote successfully renamed to \:{new_name}:')
 
-	@commands.command()
+	@commands.command(aliases=('ls', 'dir'))
 	async def list(self, context, animated=''):
 		"""A list of all emotes on this server.
 
@@ -239,7 +277,18 @@ class Emotes:
 		self.paginators.add(paginator)
 		await paginator.begin()
 
+	async def parse_emote(self, context, name_or_emote):
+		match = utils.emote.RE_CUSTOM_EMOTE.match(name_or_emote)
+		if match:
+			id = int(match.group('id'))
+			emote = discord.utils.get(context.guild.emojis, id=id)
+			if emote:
+				return emote
+		name = name_or_emote
+		return await self.disambiguate(context, name)
+
 	async def disambiguate(self, context, name):
+		name = name.strip(':')  # in case the user tries :foo: and foo is animated
 		candidates = [e for e in context.guild.emojis if e.name.lower() == name.lower() and e.require_colons]
 		if not candidates:
 			raise errors.EmoteNotFoundError(name)

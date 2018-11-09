@@ -13,13 +13,27 @@ logger.setLevel(logging.INFO)
 
 class Bot(commands.AutoShardedBot):
 	def __init__(self, **kwargs):
-		super().__init__(command_prefix=commands.when_mentioned, **kwargs)
-
 		with open('config.py') as f:
 			self.config = eval(f.read(), {})
 
+		super().__init__(
+			command_prefix=commands.when_mentioned,
+			description=self.config.get('description', ''),
+			**kwargs)
+
+		self._setup_success_emojis()
+
 		for cog in self.config['cogs']:
-			   self.load_extension(cog)
+			self.load_extension(cog)
+
+	def _setup_success_emojis(self):
+		"""Load the emojis from the config to be used when a command fails or succeeds
+		We do it this way so that they can be used anywhere instead of requiring a bot instance.
+		"""
+		import utils.misc
+		default = ('❌', '✅')
+		utils.SUCCESS_EMOJIS = utils.misc.SUCCESS_EMOJIS = (
+			self.config.get('response_emojis', {}).get('success', default))
 
 	def run(self):
 		super().run(self.config['tokens'].pop('discord'))

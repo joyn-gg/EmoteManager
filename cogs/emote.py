@@ -205,13 +205,26 @@ class Emotes:
 		await context.send(f'Emote \:{old_name}: successfully renamed to \:{new_name}:')
 
 	@commands.command()
-	async def list(self, context):
+	async def list(self, context, animated=''):
 		"""A list of all emotes on this server.
 
 		The list shows each emote and its raw form.
+
+		If "animated" is provided, only show animated emotes.
+		If "static" is provided, only show static emotes.
+		Otherwise, show all emotes.
 		"""
+
+		animated = animated.lower()
+		if animated == 'animated':
+			pred = lambda e: e.animated
+		elif animated == 'static':
+			pred = lambda e: not e.animated
+		else:
+			pred = lambda e: True
+
 		emotes = sorted(
-			filter(lambda e: e.require_colons, context.guild.emojis),
+			filter(pred, context.guild.emojis),
 			key=lambda e: e.name.lower())
 
 		processed = []

@@ -6,6 +6,7 @@ import traceback
 
 import discord
 from discord.ext import commands
+import simple_help_formatter
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ class Bot(commands.AutoShardedBot):
 		super().__init__(
 			command_prefix=commands.when_mentioned,
 			description=self.config.get('description', ''),
+			formatter=simple_help_formatter.HelpFormatter(),
 			**kwargs)
 
 		self._setup_success_emojis()

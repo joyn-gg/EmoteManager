@@ -22,7 +22,7 @@ from utils.paginator import ListPaginator
 
 logger = logging.getLogger(__name__)
 
-class Emotes:
+class Emotes(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
 		self.http = aiohttp.ClientSession(loop=self.bot.loop, read_timeout=30, headers={
@@ -34,7 +34,7 @@ class Emotes:
 		# keep track of paginators so we can end them when the cog is unloaded
 		self.paginators = weakref.WeakSet()
 
-	def __unload(self):
+	def cog_unload(self):
 		self.bot.loop.create_task(self.http.close())
 		self.bot.loop.create_task(self.aioec.close())
 
@@ -44,7 +44,7 @@ class Emotes:
 
 		self.bot.loop.create_task(stop_all_paginators())
 
-	async def __local_check(self, context):
+	async def cog_check(self, context):
 		if not context.guild or not isinstance(context.author, discord.Member):
 			raise commands.NoPrivateMessage
 
@@ -62,6 +62,7 @@ class Emotes:
 
 		return True
 
+	@commands.Cog.listener()
 	async def on_command_error(self, context, error):
 		if isinstance(error, (errors.EmoteManagerError, errors.MissingManageEmojisPermission)):
 			await context.send(str(error))

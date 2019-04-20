@@ -6,7 +6,6 @@ import traceback
 
 import discord
 from discord.ext import commands
-import simple_help_formatter
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -20,7 +19,7 @@ class Bot(commands.AutoShardedBot):
 		super().__init__(
 			command_prefix=commands.when_mentioned,
 			description=self.config.get('description', ''),
-			formatter=simple_help_formatter.HelpFormatter(),
+			help_command=commands.MinimalHelpCommand(),
 			**kwargs)
 
 		self._setup_success_emojis()
@@ -42,12 +41,6 @@ class Bot(commands.AutoShardedBot):
 
 	async def on_ready(self):
 		logger.info('Logged on as {0} (ID: {0.id})'.format(self.user))
-
-	async def on_message(self, message):
-		if message.author.bot:
-			return
-
-		await self.process_commands(message)
 
 	# https://github.com/Rapptz/RoboDanny/blob/ca75fae7de132e55270e53d89bc19dd2958c2ae0/bot.py#L77-L85
 	async def on_command_error(self, context, error):

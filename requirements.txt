@@ -1,6 +1,5 @@
 aioec
 ben_cogs
-discord.py @ git+https://github.com/Rapptz/discord.py@rewrite
+discord.py>=1.0.1,<2.0.0
 jishaku
-simple_help_formatter @ git+https://github.com/bmintz/simple-dpy-helpformatter
 wand

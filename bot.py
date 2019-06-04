@@ -8,6 +8,7 @@ import discord
 from discord.ext import commands
 
 logging.basicConfig(level=logging.WARNING)
+logging.getLogger('discord').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 

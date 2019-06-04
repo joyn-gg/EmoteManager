@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 
-import io
-import imghdr
 import asyncio
+import cgi
 import logging
 import weakref
 import traceback
@@ -186,29 +185,31 @@ class Emotes(commands.Cog):
 		return emote
 
 	async def fetch_emote(self, url):
-		# credits to @Liara#0001 (ID 136900814408122368) for most of this part
-		# https://gitlab.com/Pandentia/element-zero/blob/47bc8eeeecc7d353ec66e1ef5235adab98ca9635/element_zero/cogs/emoji.py#L217-228
-		async with self.http.head(url, timeout=5) as response:
+		def validate_headers(response):
 			if response.reason != 'OK':
 				raise errors.HTTPException(response.status)
-			if response.headers.get('Content-Type') not in ('image/png', 'image/jpeg', 'image/gif'):
+			# some dumb servers also send '; charset=UTF-8' which we should ignore
+			mimetype, options = cgi.parse_header(response.headers.get('Content-Type', ''))
+			if mimetype not in {'image/png', 'image/jpeg', 'image/gif'}:
 				raise errors.InvalidImageError
 
-		async with self.http.get(url) as response:
-			if response.reason != 'OK':
-				raise errors.HTTPException(response.status)
-			return io.BytesIO(await response.read())
+		try:
+			async with self.http.head(url, timeout=5) as response:
+				validate_headers(response)
+		except aiohttp.ServerDisconnectedError as exception:
+			validate_headers(exception.message)
 
-	async def create_emote_from_bytes(self, guild, name, author_id, image_data: io.BytesIO, *, reason=None):
-		# resize_until_small is normally blocking, because wand is.
-		# run_in_executor is magic that makes it non blocking somehow.
-		# also, None as the executor arg means "use the loop's default executor"
-		image_data = await self.bot.loop.run_in_executor(None, utils.image.resize_until_small, image_data)
+		async with self.http.get(url) as response:
+			validate_headers(response)
+			return await response.read()
+
+	async def create_emote_from_bytes(self, guild, name, author_id, image_data: bytes, *, reason=None):
+		image_data = await utils.image.resize_in_subprocess(image_data)
 		if reason is None:
 			reason = f'Created by {utils.format_user(self.bot, author_id)}'
 		return await guild.create_custom_emoji(
 			name=name,
-			image=image_data.read(),
+			image=image_data,
 			reason=reason)
 
 	@commands.command(aliases=('delete', 'delet', 'rm'))

@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# encoding: utf-8
+import asyncio
 
 from discord.ext import commands
 
@@ -18,6 +17,11 @@ class MissingManageEmojisPermission(commands.MissingPermissions):
 class EmoteManagerError(commands.CommandError):
 	"""Generic error with the bot. This can be used to catch all bot errors."""
 	pass
+
+class ImageResizeTimeoutError(EmoteManagerError, asyncio.TimeoutError):
+	"""Resizing the image took too long."""
+	def __init__(self):
+		super().__init__('Error: resizing the image took too long.')
 
 class HTTPException(EmoteManagerError):
 	"""The server did not respond with an OK status code."""

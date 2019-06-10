@@ -171,6 +171,8 @@ class Emotes(commands.Cog):
 			return (
 				'An error occurred while creating the emote:\n'
 				+ utils.format_http_exception(ex))
+		except errors.ImageResizeTimeoutError:
+			raise
 		except asyncio.TimeoutError:
 			return 'Error: retrieving the image took too long.'
 		except ValueError:

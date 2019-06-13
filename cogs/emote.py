@@ -223,7 +223,7 @@ class Emotes(commands.Cog):
 		if not emotes:
 			emote = await self.parse_emote(context, emote)
 			await emote.delete(reason=f'Removed by {utils.format_user(self.bot, context.author.id)}')
-			await context.send(f'Emote \:{emote.name}: successfully removed.')
+			await context.send(fr'Emote \:{emote.name}: successfully removed.')
 		else:
 			for emote in (emote,) + emotes:
 				await context.invoke(self.remove, emote)
@@ -247,7 +247,7 @@ class Emotes(commands.Cog):
 				'An error occurred while renaming the emote:\n'
 				+ utils.format_http_exception(ex))
 
-		await context.send(f'Emote successfully renamed to \:{new_name}:')
+		await context.send(fr'Emote successfully renamed to \:{new_name}:')
 
 	@commands.command(aliases=('ls', 'dir'))
 	async def list(self, context, animated=''):
@@ -274,7 +274,7 @@ class Emotes(commands.Cog):
 
 		processed = []
 		for emote in emotes:
-			raw = str(emote).replace(':', '\:')
+			raw = str(emote).replace(':', r'\:')
 			processed.append(f'{emote} {raw}')
 
 		paginator = ListPaginator(context, processed)
@@ -302,7 +302,7 @@ class Emotes(commands.Cog):
 
 		message = ['Multiple emotes were found with that name. Which one do you mean?']
 		for i, emote in enumerate(candidates, 1):
-			message.append(f'{i}. {emote} (\:{emote.name}:)')
+			message.append(fr'{i}. {emote} (\:{emote.name}:)')
 
 		await context.send('\n'.join(message))
 

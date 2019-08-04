@@ -43,14 +43,14 @@ class Emotes(commands.Cog):
 		self.paginators = weakref.WeakSet()
 
 	def cog_unload(self):
-		self.bot.loop.create_task(self.http.close())
-		self.bot.loop.create_task(self.aioec.close())
+		async def close():
+			await self.http.close()
+			await self.aioec.close()
 
-		async def stop_all_paginators():
 			for paginator in self.paginators:
 				await paginator.stop()
 
-		self.bot.loop.create_task(stop_all_paginators())
+		self.bot.loop.create_task(close())
 
 	async def cog_check(self, context):
 		if not context.guild or not isinstance(context.author, discord.Member):

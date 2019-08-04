@@ -3,8 +3,10 @@
 
 import asyncio
 import cgi
+import io
 import logging
 import weakref
+import posixpath
 import traceback
 import contextlib
 import urllib.parse
@@ -15,6 +17,7 @@ import discord
 from discord.ext import commands
 
 import utils
+import utils.archive
 import utils.image
 from utils import errors
 from utils.paginator import ListPaginator
@@ -22,6 +25,12 @@ from utils.paginator import ListPaginator
 logger = logging.getLogger(__name__)
 
 class Emotes(commands.Cog):
+	IMAGE_MIMETYPES = {'image/png', 'image/jpeg', 'image/gif'}
+	# TAR_MIMETYPES = {'application/x-tar', 'application/x-xz', 'application/gzip', 'application/x-bzip2'}
+	TAR_MIMETYPES = {'application/x-tar'}
+	ZIP_MIMETYPES = {'application/zip', 'application/octet-stream', 'application/x-zip-compressed', 'multipart/x-zip'}
+	ARCHIVE_MIMETYPES = TAR_MIMETYPES | ZIP_MIMETYPES
+
 	def __init__(self, bot):
 		self.bot = bot
 		self.http = aiohttp.ClientSession(loop=self.bot.loop, read_timeout=30, headers={
@@ -122,14 +131,18 @@ class Emotes(commands.Cog):
 		elif not args:
 			raise commands.BadArgument('Your message had no emotes and no name!')
 
-	@staticmethod
-	def parse_add_command_attachment(context, args):
+	@classmethod
+	def parse_add_command_attachment(cls, context, args):
 		attachment = context.message.attachments[0]
-		# as far as i can tell, this is how discord replaces filenames when you upload an emote image
-		name = ''.join(args) if args else attachment.filename.split('.')[0].replace(' ', '')
+		name = cls.format_emote_filename(''.join(args) if args else attachment.filename)
 		url = attachment.url
 
 		return name, url
+
+	@staticmethod
+	def format_emote_filename(filename):
+		"""format a filename to an emote name as discord does when you upload an emote image"""
+		return posixpath.splitext(filename)[0].replace(' ', '')
 
 	@commands.command(name='add-from-ec', aliases=['addfromec'])
 	async def add_from_ec(self, context, name, *names):
@@ -163,56 +176,100 @@ class Emotes(commands.Cog):
 
 		await context.send(message)
 
+	@commands.command(name='add-zip', aliases=['add-tar', 'add-from-zip', 'add-from-tar'])
+	async def add_archive(self, context, url=None):
+		"""Add several emotes from a .zip or .tar archive.
+
+		You may either pass a URL to an archive or upload one as an attachment.
+		All .gif, .png, and .jpg files in the archive will be uploaded as emotes.
+		"""
+		if url and context.message.attachments:
+			raise commands.BadArgument('Either a URL or an attachment must be given, not both.')
+		if not url and not context.message.attachments:
+			raise commands.BadArgument('A URL or attachment must be given.')
+
+		url = url or context.message.attachments[0].url
+		archive = await self.fetch_safe(url, valid_mimetypes=self.ARCHIVE_MIMETYPES)
+		if type(archive) is str:  # error case
+			await context.send(archive)
+			return
+
+		await self.add_from_archive(context, archive)
+
+	async def add_from_archive(self, context, archive):
+		limit = 50_000_000  # prevent someone from trying to make a giant compressed file
+		async for name, img, error in utils.archive.extract_async(io.BytesIO(archive), size_limit=limit):
+			if error is None:
+				name = self.format_emote_filename(name)
+				async with context.typing():
+					await context.send(await self.add_safe_bytes(context.guild, name, context.author.id, img))
+				continue
+
+			if isinstance(error, errors.FileTooBigError):
+				await context.send(
+					f'{name}: file too big. '
+					f'The limit is {humanize.naturalsize(error.limit)} '
+					f'but this file is {humainze.naturalsize(error.size)}.')
+				continue
+
+			await context.send(f'{name}: {error}')
+
 	async def add_safe(self, guild, name, url, author_id, *, reason=None):
 		"""Try to add an emote. Returns a string that should be sent to the user."""
 		try:
-			emote = await self.add_from_url(guild, name, url, author_id, reason=reason)
-		except discord.HTTPException as ex:
-			return (
-				'An error occurred while creating the emote:\n'
-				+ utils.format_http_exception(ex))
-		except errors.ImageResizeTimeoutError:
-			raise
+			image_data = await self.fetch_safe(url)
+		except errors.InvalidFileError:
+			raise errors.InvalidImageError
+
+		if type(image_data) is str:  # error case
+			return image_data
+		return await self.add_safe_bytes(guild, name, author_id, image_data, reason=reason)
+
+	async def fetch_safe(self, url, valid_mimetypes=None):
+		"""Try to fetch a URL. On error return a string that should be sent to the user."""
+		try:
+			return await self.fetch(url, valid_mimetypes=valid_mimetypes)
 		except asyncio.TimeoutError:
 			return 'Error: retrieving the image took too long.'
 		except ValueError:
 			return 'Error: Invalid URL.'
-		else:
-			return f'Emote {emote} successfully created.'
 
-	async def add_from_url(self, guild, name, url, author_id, *, reason=None):
-		image_data = await self.fetch_emote(url)
-		emote = await self.create_emote_from_bytes(guild, name, author_id, image_data, reason=reason)
+	async def add_safe_bytes(self, guild, name, author_id, image_data: bytes, *, reason=None):
+		"""Try to add an emote from bytes. On error, return a string that should be sent to the user."""
+		try:
+			emote = await self.create_emote_from_bytes(guild, name, author_id, image_data, reason=reason)
+		except discord.HTTPException as ex:
+			return (
+				'An error occurred while creating the emote:\n'
+				+ utils.format_http_exception(ex))
+		return f'Emote {emote} successfully created.'
 
-		return emote
-
-	async def fetch_emote(self, url):
+	async def fetch(self, url, valid_mimetypes=None):
+		valid_mimetypes = valid_mimetypes or self.IMAGE_MIMETYPES
 		def validate_headers(response):
 			if response.reason != 'OK':
 				raise errors.HTTPException(response.status)
 			# some dumb servers also send '; charset=UTF-8' which we should ignore
 			mimetype, options = cgi.parse_header(response.headers.get('Content-Type', ''))
-			if mimetype not in {'image/png', 'image/jpeg', 'image/gif'}:
-				raise errors.InvalidImageError
+			if mimetype not in valid_mimetypes:
+				raise errors.InvalidFileError
 
-		try:
-			async with self.http.head(url, timeout=5) as response:
-				validate_headers(response)
-		except aiohttp.ServerDisconnectedError as exception:
-			validate_headers(exception.message)
+		async def validate(request):
+			try:
+				async with request as response:
+					validate_headers(response)
+					return await response.read()
+			except aiohttp.ClientError as exc:
+				raise errors.EmoteManagerError('An error occurred while retrieving the file: {exc}')
 
-		async with self.http.get(url) as response:
-			validate_headers(response)
-			return await response.read()
+		await validate(self.http.head(url, timeout=5))
+		return await validate(self.http.get(url))
 
 	async def create_emote_from_bytes(self, guild, name, author_id, image_data: bytes, *, reason=None):
 		image_data = await utils.image.resize_in_subprocess(image_data)
 		if reason is None:
 			reason = f'Created by {utils.format_user(self.bot, author_id)}'
-		return await guild.create_custom_emoji(
-			name=name,
-			image=image_data,
-			reason=reason)
+		return await guild.create_custom_emoji(name=name, image=image_data, reason=reason)
 
 	@commands.command(aliases=('delete', 'delet', 'rm'))
 	async def remove(self, context, emote, *emotes):

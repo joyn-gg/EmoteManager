@@ -4,7 +4,6 @@ from discord.ext import commands
 
 import utils
 
-
 class MissingManageEmojisPermission(commands.MissingPermissions):
 	"""The invoker or the bot doesn't have permissions to manage server emojis."""
 
@@ -33,15 +32,20 @@ class EmoteNotFoundError(EmoteManagerError):
 	def __init__(self, name):
 		super().__init__(f'An emote called `{name}` does not exist in this server.')
 
-class InvalidImageError(EmoteManagerError):
+class FileTooBigError(EmoteManagerError):
+	def __init__(self, size, limit):
+		self.size = size
+		self.limit = limit
+
+class InvalidFileError(EmoteManagerError):
+	"""The file is not a zip, tar, GIF, PNG, or JPG file."""
+	def __init__(self):
+		super().__init__('Invalid file given.')
+
+class InvalidImageError(InvalidFileError):
 	"""The image is not a GIF, PNG, or JPG"""
 	def __init__(self):
 		super().__init__('The image supplied was not a GIF, PNG, or JPG.')
-
-class NoMoreSlotsError(EmoteManagerError):
-	"""Raised in case all slots of a particular type (static/animated) are full"""
-	def __init__(self):
-		super().__init__('No more backend slots available.')
 
 class PermissionDeniedError(EmoteManagerError):
 	"""Raised when a user tries to modify an emote without the Manage Emojis permission"""

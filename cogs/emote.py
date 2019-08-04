@@ -59,9 +59,6 @@ class Emotes(commands.Cog):
 		if context.command is self.list:
 			return True
 
-		if context.command is self.list:
-			return True
-
 		if (
 			not context.author.guild_permissions.manage_emojis
 			or not context.guild.me.guild_permissions.manage_emojis

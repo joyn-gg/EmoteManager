@@ -45,7 +45,7 @@ class InvalidFileError(EmoteManagerError):
 class InvalidImageError(InvalidFileError):
 	"""The image is not a GIF, PNG, or JPG"""
 	def __init__(self):
-		super().__init__('The image supplied was not a GIF, PNG, or JPG.')
+		super(Exception, self).__init__('The image supplied was not a GIF, PNG, or JPG.')
 
 class PermissionDeniedError(EmoteManagerError):
 	"""Raised when a user tries to modify an emote without the Manage Emojis permission"""

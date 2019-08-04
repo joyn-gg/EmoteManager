@@ -235,9 +235,11 @@ class Emotes(commands.Cog):
 		"""Try to add an emote from bytes. On error, return a string that should be sent to the user."""
 		try:
 			emote = await self.create_emote_from_bytes(guild, name, author_id, image_data, reason=reason)
+		except discord.InvalidArgument:
+			return discord.utils.escape_mentions(f'{name}: The file supplied was not a valid GIF, PNG, or JPEG file.')
 		except discord.HTTPException as ex:
-			return (
-				'An error occurred while creating the emote:\n'
+			return discord.utils.escape_mentions(
+				f'{name}: An error occurred while creating the the emote:\n'
 				+ utils.format_http_exception(ex))
 		return f'Emote {emote} successfully created.'
 

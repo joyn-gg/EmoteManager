@@ -197,7 +197,7 @@ class Emotes(commands.Cog):
 		limit = 50_000_000  # prevent someone from trying to make a giant compressed file
 		async for name, img, error in utils.archive.extract_async(io.BytesIO(archive), size_limit=limit):
 			if error is None:
-				name = self.format_emote_filename(name)
+				name = self.format_emote_filename(posixpath.basename(name))
 				async with context.typing():
 					await context.send(await self.add_safe_bytes(context.guild, name, context.author.id, img))
 				continue

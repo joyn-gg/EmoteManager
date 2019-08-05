@@ -5,10 +5,8 @@ import typing
 import discord
 from discord.ext.commands import Context
 
-
 # Copyright © 2016-2017 Pandentia and contributors
 # https://github.com/Thessia/Liara/blob/75fa11948b8b2ea27842d8815a32e51ef280a999/cogs/utils/paginator.py
-
 
 class Paginator:
 	def __init__(self, ctx: Context, pages: typing.Iterable, *, timeout=300, delete_message=False,
@@ -81,7 +79,8 @@ class Paginator:
 			delete = self.delete_msg
 
 		if delete:
-			await self._message.delete()
+			with contextlib.suppress(discord.HTTPException):
+				await self._message.delete()
 		else:
 			await self._clear_reactions()
 		self._stopped = True
@@ -91,7 +90,10 @@ class Paginator:
 			await self._message.clear_reactions()
 		except discord.Forbidden:
 			for button in self.navigation:
-				await self._message.remove_reaction(button, self._message.author)
+				with contextlib.suppress(discord.HTTPException):
+					await self._message.remove_reaction(button, self._message.author)
+		except discord.HTTPException:
+			pass
 
 	async def format_page(self):
 		self._embed.description = self.pages[self._page]
@@ -125,7 +127,6 @@ class Paginator:
 	async def last_page(self):
 		self._page = len(self.pages) - 1
 		await self.format_page()
-
 
 class ListPaginator(Paginator):
 	def __init__(self, ctx, _list: list, per_page=10, **kwargs):

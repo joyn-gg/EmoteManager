@@ -18,6 +18,16 @@
 		},
 	},
 
+	'ignore_bots': {
+		'default': True,
+		'overrides': {
+			'channels': [
+			],
+			'guilds': [
+			],
+		},
+	},
+
 	'user_agent': 'EmoteManagerBot (https://github.com/bmintz/emote-manager-bot)',
 
 	# emotes that the bot may use to respond to you

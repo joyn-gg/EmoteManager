@@ -5,6 +5,7 @@ import logging
 import traceback
 
 import discord
+from ben_cogs.bot import BenCogsBot
 from discord.ext import commands
 
 logging.basicConfig(level=logging.WARNING)
@@ -12,21 +13,22 @@ logging.getLogger('discord').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-class Bot(commands.AutoShardedBot):
+class Bot(BenCogsBot):
+	startup_extensions = (
+		'cogs.emote',
+		'cogs.meta',
+		'ben_cogs.debug',
+		'ben_cogs.misc',
+		'ben_cogs.stats',
+		'jishaku',
+	)
+
 	def __init__(self, **kwargs):
 		with open('config.py') as f:
-			self.config = eval(f.read(), {})
+			config = eval(f.read(), {})
 
-		super().__init__(
-			command_prefix=commands.when_mentioned,
-			description=self.config.get('description', ''),
-			help_command=commands.MinimalHelpCommand(),
-			**kwargs)
-
+		super().__init__(config=config, **kwargs)
 		self._setup_success_emojis()
-
-		for cog in self.config['cogs']:
-			self.load_extension(cog)
 
 	def _setup_success_emojis(self):
 		"""Load the emojis from the config to be used when a command fails or succeeds
@@ -37,35 +39,10 @@ class Bot(commands.AutoShardedBot):
 		utils.SUCCESS_EMOJIS = utils.misc.SUCCESS_EMOJIS = (
 			self.config.get('response_emojis', {}).get('success', default))
 
-	def run(self):
-		super().run(self.config['tokens'].pop('discord'))
-
-	async def on_ready(self):
-		logger.info('Logged on as {0} (ID: {0.id})'.format(self.user))
-
-	# https://github.com/Rapptz/RoboDanny/blob/ca75fae7de132e55270e53d89bc19dd2958c2ae0/bot.py#L77-L85
-	async def on_command_error(self, context, error):
-		if isinstance(error, commands.NoPrivateMessage):
-			await context.author.send('This command cannot be used in private messages.')
-		elif isinstance(error, commands.DisabledCommand):
-			message = 'Sorry. This command is disabled and cannot be used.'
-			try:
-				await context.author.send(message)
-			except discord.Forbidden:
-				await context.send(message)
-		elif isinstance(error, commands.UserInputError):
-			await context.send(error)
-		elif isinstance(error, commands.NotOwner):
-			logger.error('%s tried to run %s but is not the owner', context.author, context.command.name)
-		elif isinstance(error, commands.CommandInvokeError):
-			await context.send('An internal error occured while trying to run that command.')
-
-			logger.error('In %s:', context.command.qualified_name)
-			logger.error(''.join(traceback.format_tb(error.original.__traceback__)))
-			# pylint: disable=logging-format-interpolation
-			logger.error('{0.__class__.__name__}: {0}'.format(error.original))
-
-bot = Bot()
+	def initial_activity(self):
+		if not self.is_ready():
+			return super().activity
+		return super().activity or discord.Game(f'@{self.user.name} help')
 
 if __name__ == '__main__':
-	bot.run()
+	Bot().run()

@@ -9,15 +9,6 @@
 	# if set to None, the support command will be disabled
 	'support_server_invite_channel': None,
 
-	'cogs': (
-		'cogs.emote',
-		'cogs.meta',
-		'ben_cogs.debug',
-		'ben_cogs.misc',
-		'ben_cogs.debug'
-		'jishaku',
-	),
-
 	'tokens': {
 		'discord': 'sek.rit.token',
 		'stats': {

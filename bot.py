@@ -5,7 +5,7 @@ import logging
 import traceback
 
 import discord
-from ben_cogs.bot import BenCogsBot
+from bot_bin.bot import Bot
 from discord.ext import commands
 
 logging.basicConfig(level=logging.WARNING)
@@ -13,13 +13,13 @@ logging.getLogger('discord').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-class Bot(BenCogsBot):
+class Bot(Bot):
 	startup_extensions = (
 		'cogs.emote',
 		'cogs.meta',
-		'ben_cogs.debug',
-		'ben_cogs.misc',
-		'ben_cogs.stats',
+		'bot_bin.debug',
+		'bot_bin.misc',
+		'bot_bin.stats',
 		'jishaku',
 	)
 

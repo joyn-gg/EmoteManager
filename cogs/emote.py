@@ -146,7 +146,7 @@ class Emotes(commands.Cog):
 		"""Copies one or more emotes from Emote Collector to your server.
 
 		The list of possible emotes you can copy is here:
-		https://emote-collector.python-for.life/list
+		https://ec.emote.bot/list
 		"""
 		if names:
 			for name in (name,) + names:

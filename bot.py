@@ -28,12 +28,12 @@ class Bot(Bot):
 			config = eval(f.read(), {})
 
 		super().__init__(config=config, **kwargs)
-		self._setup_success_emojis()
 
-	def _setup_success_emojis(self):
+	def process_config(self):
 		"""Load the emojis from the config to be used when a command fails or succeeds
 		We do it this way so that they can be used anywhere instead of requiring a bot instance.
 		"""
+		super().process_config()
 		import utils.misc
 		default = ('❌', '✅')
 		utils.SUCCESS_EMOJIS = utils.misc.SUCCESS_EMOJIS = (

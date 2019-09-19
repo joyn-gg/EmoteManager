@@ -33,12 +33,27 @@ class Emotes(commands.Cog):
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.http = aiohttp.ClientSession(loop=self.bot.loop, read_timeout=30, headers={
-			'User-Agent':
-				self.bot.config['user_agent'] + ' '
-				+ self.bot.http.user_agent
-		})
-		self.aioec = aioec.Client(loop=self.bot.loop)
+
+		connector = None
+		socks5_url = self.bot.config.get('socks5_proxy_url')
+		if socks5_url:
+			from aiohttp_socks import SocksConnector
+			connector = SocksConnector.from_url(socks5_url, rdns=True)
+
+		self.http = aiohttp.ClientSession(
+			loop=self.bot.loop,
+			read_timeout=self.bot.config.get('http_read_timeout', 60),
+			connector=connector if self.bot.config.get('use_socks5_for_all_connections') else None,
+			headers={
+				'User-Agent':
+					self.bot.config['user_agent'] + ' '
+					+ self.bot.http.user_agent
+			})
+
+		self.aioec = aioec.Client(
+			loop=self.bot.loop,
+			connector=connector,
+			base_url=self.bot.config.get('ec_api_base_url'))
 		# keep track of paginators so we can end them when the cog is unloaded
 		self.paginators = weakref.WeakSet()
 
@@ -167,9 +182,7 @@ class Emotes(commands.Cog):
 			f'Original emote author: {utils.format_user(self.bot, emote.author)}')
 
 		async with context.typing():
-			message = await self.add_safe(context.guild, name, utils.emote.url(
-				emote.id, animated=emote.animated
-			), context.author.id, reason=reason)
+			message = await self.add_safe(context.guild, name, emote.url, context.author.id, reason=reason)
 
 		await context.send(message)
 
@@ -230,6 +243,8 @@ class Emotes(commands.Cog):
 			return 'Error: retrieving the image took too long.'
 		except ValueError:
 			return 'Error: Invalid URL.'
+		except aiohttp.ClientResponseError as exc:
+			raise errors.HTTPException(exc.status)
 
 	async def add_safe_bytes(self, guild, name, author_id, image_data: bytes, *, reason=None):
 		"""Try to add an emote from bytes. On error, return a string that should be sent to the user."""
@@ -246,8 +261,7 @@ class Emotes(commands.Cog):
 	async def fetch(self, url, valid_mimetypes=None):
 		valid_mimetypes = valid_mimetypes or self.IMAGE_MIMETYPES
 		def validate_headers(response):
-			if response.reason != 'OK':
-				raise errors.HTTPException(response.status)
+			response.raise_for_status()
 			# some dumb servers also send '; charset=UTF-8' which we should ignore
 			mimetype, options = cgi.parse_header(response.headers.get('Content-Type', ''))
 			if mimetype not in valid_mimetypes:
@@ -258,10 +272,12 @@ class Emotes(commands.Cog):
 				async with request as response:
 					validate_headers(response)
 					return await response.read()
+			except aiohttp.ClientResponseError:
+				raise
 			except aiohttp.ClientError as exc:
 				raise errors.EmoteManagerError('An error occurred while retrieving the file: {exc}')
 
-		await validate(self.http.head(url, timeout=5))
+		await validate(self.http.head(url, timeout=self.bot.config.get('http_head_timeout', 10)))
 		return await validate(self.http.get(url))
 
 	async def create_emote_from_bytes(self, guild, name, author_id, image_data: bytes, *, reason=None):

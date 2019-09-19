@@ -28,7 +28,12 @@
 		},
 	},
 
-	'user_agent': 'EmoteManagerBot (https://github.com/bmintz/emote-manager-bot)',
+	'socks5_proxy_url': None,  # required for connecting to the EC API over a Tor onion service
+	'use_socks5_for_all_connections': False,  # whether to use socks5 for all HTTP operations (other than discord.py)
+	'user_agent': 'EmoteManagerBot (https://github.com/iomintz/emote-manager-bot)',
+	'ec_api_base_url': None,  # set to None to use the default of https://ec.emote.bot/api/v0
+	'http_head_timeout': 10,  # timeout for the initial HEAD request before retrieving any images (up this if using Tor)
+	'http_read_timeout': 60,  # timeout for retrieving an image
 
 	# emotes that the bot may use to respond to you
 	# If not provided, the bot will use '❌', '✅' instead.

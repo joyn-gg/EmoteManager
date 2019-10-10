@@ -3,17 +3,20 @@
 
 import asyncio
 import cgi
+import collections
+import contextlib
 import io
 import logging
-import weakref
+import operator
 import posixpath
 import traceback
-import contextlib
 import urllib.parse
+import weakref
 
 import aioec
 import aiohttp
 import discord
+import humanize
 from discord.ext import commands
 
 import utils
@@ -23,6 +26,9 @@ from utils import errors
 from utils.paginator import ListPaginator
 
 logger = logging.getLogger(__name__)
+
+class UserCancelledError(commands.UserInputError):
+	pass
 
 class Emotes(commands.Cog):
 	IMAGE_MIMETYPES = {'image/png', 'image/jpeg', 'image/gif'}
@@ -107,7 +113,7 @@ class Emotes(commands.Cog):
 		"""
 		name, url = self.parse_add_command_args(context, args)
 		async with context.typing():
-			message = await self.add_safe(context.guild, name, url, context.message.author.id)
+			message = await self.add_safe(context, name, url, context.message.author.id)
 		await context.send(message)
 
 	@classmethod
@@ -182,7 +188,7 @@ class Emotes(commands.Cog):
 			f'Original emote author: {utils.format_user(self.bot, emote.author)}')
 
 		async with context.typing():
-			message = await self.add_safe(context.guild, name, emote.url, context.author.id, reason=reason)
+			message = await self.add_safe(context, name, emote.url, context.author.id, reason=reason)
 
 		await context.send(message)
 
@@ -199,12 +205,16 @@ class Emotes(commands.Cog):
 			raise commands.BadArgument('A URL or attachment must be given.')
 
 		url = url or context.message.attachments[0].url
-		archive = await self.fetch_safe(url, valid_mimetypes=self.ARCHIVE_MIMETYPES)
+		async with context.typing():
+			archive = await self.fetch_safe(url, valid_mimetypes=self.ARCHIVE_MIMETYPES)
 		if type(archive) is str:  # error case
 			await context.send(archive)
 			return
 
 		await self.add_from_archive(context, archive)
+		with contextlib.suppress(discord.HTTPException):
+			# so they know when we're done
+			await context.message.add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	async def add_from_archive(self, context, archive):
 		limit = 50_000_000  # prevent someone from trying to make a giant compressed file
@@ -212,7 +222,8 @@ class Emotes(commands.Cog):
 			if error is None:
 				name = self.format_emote_filename(posixpath.basename(name))
 				async with context.typing():
-					await context.send(await self.add_safe_bytes(context.guild, name, context.author.id, img))
+					message = await self.add_safe_bytes(context, name, context.author.id, img)
+				await context.send(message)
 				continue
 
 			if isinstance(error, errors.FileTooBigError):
@@ -224,7 +235,7 @@ class Emotes(commands.Cog):
 
 			await context.send(f'{name}: {error}')
 
-	async def add_safe(self, guild, name, url, author_id, *, reason=None):
+	async def add_safe(self, context, name, url, author_id, *, reason=None):
 		"""Try to add an emote. Returns a string that should be sent to the user."""
 		try:
 			image_data = await self.fetch_safe(url)
@@ -233,7 +244,7 @@ class Emotes(commands.Cog):
 
 		if type(image_data) is str:  # error case
 			return image_data
-		return await self.add_safe_bytes(guild, name, author_id, image_data, reason=reason)
+		return await self.add_safe_bytes(context, name, author_id, image_data, reason=reason)
 
 	async def fetch_safe(self, url, valid_mimetypes=None):
 		"""Try to fetch a URL. On error return a string that should be sent to the user."""
@@ -246,17 +257,34 @@ class Emotes(commands.Cog):
 		except aiohttp.ClientResponseError as exc:
 			raise errors.HTTPException(exc.status)
 
-	async def add_safe_bytes(self, guild, name, author_id, image_data: bytes, *, reason=None):
-		"""Try to add an emote from bytes. On error, return a string that should be sent to the user."""
+	async def add_safe_bytes(self, context, name, author_id, image_data: bytes, *, reason=None):
+		"""Try to add an emote from bytes. On error, return a string that should be sent to the user.
+
+		If the image is static and there are not enough free static slots, prompt to convert the image to a single-frame
+		gif instead.
+		"""
+		counts = collections.Counter(map(operator.attrgetter('animated'), context.guild.emojis))
+		# >= rather than == because there are sneaky ways to exceed the limit
+		if counts[False] >= context.guild.emoji_limit and counts[True] >= context.guild.emoji_limit:
+			# we raise instead of returning a string in order to abort commands that run this function in a loop
+			raise commands.UserInputError('This server is out of emote slots.')
+
+		static = utils.image.mime_type_for_image(image_data) != 'image/gif'
+		converted = False
+		if static and counts[False] >= 1: # context.guild.emoji_limit:
+			image_data = await utils.image.convert_to_gif_in_subprocess(image_data)
+			converted = True
+
 		try:
-			emote = await self.create_emote_from_bytes(guild, name, author_id, image_data, reason=reason)
+			emote = await self.create_emote_from_bytes(context.guild, name, author_id, image_data, reason=reason)
 		except discord.InvalidArgument:
 			return discord.utils.escape_mentions(f'{name}: The file supplied was not a valid GIF, PNG, or JPEG file.')
 		except discord.HTTPException as ex:
 			return discord.utils.escape_mentions(
 				f'{name}: An error occurred while creating the the emote:\n'
 				+ utils.format_http_exception(ex))
-		return f'Emote {emote} successfully created.'
+		s = f'Emote {emote} successfully created'
+		return s + ' as a GIF.' if converted else s + '.'
 
 	async def fetch(self, url, valid_mimetypes=None):
 		valid_mimetypes = valid_mimetypes or self.IMAGE_MIMETYPES

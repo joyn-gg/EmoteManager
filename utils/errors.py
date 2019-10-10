@@ -17,10 +17,17 @@ class EmoteManagerError(commands.CommandError):
 	"""Generic error with the bot. This can be used to catch all bot errors."""
 	pass
 
-class ImageResizeTimeoutError(EmoteManagerError, asyncio.TimeoutError):
+class ImageProcessingTimeoutError(EmoteManagerError, asyncio.TimeoutError):
+	pass
+
+class ImageResizeTimeoutError(ImageProcessingTimeoutError):
 	"""Resizing the image took too long."""
 	def __init__(self):
 		super().__init__('Error: resizing the image took too long.')
+
+class ImageConversionTimeoutError(ImageProcessingTimeoutError):
+	def __init__(self):
+		super().__init__('Error: converting the image to a GIF took too long.')
 
 class HTTPException(EmoteManagerError):
 	"""The server did not respond with an OK status code."""

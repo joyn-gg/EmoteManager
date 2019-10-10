@@ -4,6 +4,7 @@
 import asyncio
 import base64
 import contextlib
+import functools
 import io
 import logging
 import sys
@@ -28,42 +29,43 @@ def resize_until_small(image_data: io.BytesIO) -> None:
 	# so resizing sometimes does more harm than good.
 	max_resolution = 128  # pixels
 	image_size = size(image_data)
-	while image_size > 256 * 2**10 and max_resolution >= 32:  # don't resize past 32x32 or 256KiB
-		logger.debug('image size too big (%s bytes)', image_size)
-		logger.debug('attempting resize to at most%s*%s pixels', max_resolution, max_resolution)
+	if image_size <= 256 * 2**10:
+		return
 
-		try:
-			thumbnail(image_data, (max_resolution, max_resolution))
-		except wand.exceptions.CoderError:
-			raise errors.InvalidImageError
+	try:
+		with wand.image.Image(blob=image_data) as original_image:
+			while True:
+				logger.debug('image size too big (%s bytes)', image_size)
+				logger.debug('attempting resize to at most%s*%s pixels', max_resolution, max_resolution)
 
-		image_size = size(image_data)
-		max_resolution //= 2
+				with original_image.clone() as resized:
+					resized.transform(resize=f'{max_resolution}x{max_resolution}')
+					image_size = len(resized.make_blob())
+					if image_size <= 256 * 2**10 or max_resolution < 32:  # don't resize past 256KiB or 32×32
+						image_data.truncate(0)
+						image_data.seek(0)
+						resized.save(file=image_data)
+						image_data.seek(0)
+						break
 
-def thumbnail(image_data: io.BytesIO, max_size=(128, 128)) -> None:
-	"""Resize an image in place to no more than max_size pixels, preserving aspect ratio."""
-	with wand.image.Image(blob=image_data) as image:
-		new_resolution = scale_resolution((image.width, image.height), max_size)
-		image.resize(*new_resolution)
-		image_data.truncate(0)
-		image_data.seek(0)
-		image.save(file=image_data)
+				max_resolution //= 2
+	except wand.exceptions.CoderError:
+		raise errors.InvalidImageError
 
-	# allow resizing the original image more than once for memory profiling
-	image_data.seek(0)
+def convert_to_gif(image_data: io.BytesIO) -> None:
+	try:
+		with wand.image.Image(blob=image_data) as orig, orig.convert('gif') as converted:
+			# discord tries to stop us from abusing animated gif slots by detecting single frame gifs
+			# so make it two frames
+			converted.sequence[0].delay = 0  # show the first frame forever
+			converted.sequence.append(wand.image.Image(width=1, height=1))
 
-def scale_resolution(old_res, new_res):
-	"""Resize a resolution, preserving aspect ratio. Returned w,h will be <= new_res"""
-	# https://stackoverflow.com/a/6565988
-
-	old_width, old_height = old_res
-	new_width, new_height = new_res
-
-	old_ratio = old_width / old_height
-	new_ratio = new_width / new_height
-	if new_ratio > old_ratio:
-		return (old_width * new_height//old_height, new_height)
-	return new_width, old_height * new_width//old_width
+			image_data.truncate(0)
+			image_data.seek(0)
+			converted.save(file=image_data)
+			image_data.seek(0)
+	except wand.exceptions.CoderError:
+		raise errors.InvalidImageError
 
 def mime_type_for_image(data):
 	if data.startswith(b'\x89PNG\r\n\x1a\n'):
@@ -81,12 +83,19 @@ def image_to_base64_url(data):
 	return fmt.format(mime=mime, data=b64)
 
 def main() -> typing.NoReturn:
-	"""resize an image from stdin and write the resized version to stdout."""
+	"""resize or convert an image from stdin and write the resized or converted version to stdout."""
 	import sys
+
+	if sys.argv[1] == 'resize':
+		f = resize_until_small
+	elif sys.argv[1] == 'convert':
+		f = convert_to_gif
+	else:
+		sys.exit(1)
 
 	data = io.BytesIO(sys.stdin.buffer.read())
 	try:
-		resize_until_small(data)
+		f(data)
 	except errors.InvalidImageError:
 		# 2 is used because 1 is already used by python's default error handler
 		sys.exit(2)
@@ -102,19 +111,19 @@ def main() -> typing.NoReturn:
 
 	sys.exit(0)
 
-async def resize_in_subprocess(image_data: bytes):
+async def process_image_in_subprocess(command_name, image_data: bytes):
 	proc = await asyncio.create_subprocess_exec(
-		sys.executable, '-m', __name__,
+		sys.executable, '-m', __name__, command_name,
 
 		stdin=asyncio.subprocess.PIPE,
 		stdout=asyncio.subprocess.PIPE,
 		stderr=asyncio.subprocess.PIPE)
 
 	try:
-		image_data, err = await asyncio.wait_for(proc.communicate(image_data), timeout=30)
+		image_data, err = await asyncio.wait_for(proc.communicate(image_data), timeout=float('inf'))
 	except asyncio.TimeoutError:
 		proc.kill()
-		raise errors.ImageResizeTimeoutError
+		raise errors.ImageResizeTimeoutError if command_name == 'resize' else errors.ImageConversionTimeoutError
 	else:
 		if proc.returncode == 2:
 			raise errors.InvalidImageError
@@ -122,6 +131,9 @@ async def resize_in_subprocess(image_data: bytes):
 			raise RuntimeError(err.decode('utf-8') + f'Return code: {proc.returncode}')
 
 	return image_data
+
+resize_in_subprocess = functools.partial(process_image_in_subprocess, 'resize')
+convert_to_gif_in_subprocess = functools.partial(process_image_in_subprocess, 'convert')
 
 def size(fp):
 	"""return the size, in bytes, of the data a file-like object represents"""

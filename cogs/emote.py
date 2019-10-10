@@ -235,7 +235,7 @@ class Emotes(commands.Cog):
 				await context.send(
 					f'{name}: file too big. '
 					f'The limit is {humanize.naturalsize(error.limit)} '
-					f'but this file is {humainze.naturalsize(error.size)}.')
+					f'but this file is {humanize.naturalsize(error.size)}.')
 				continue
 
 			await context.send(f'{name}: {error}')

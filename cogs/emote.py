@@ -276,7 +276,7 @@ class Emotes(commands.Cog):
 
 		static = utils.image.mime_type_for_image(image_data) != 'image/gif'
 		converted = False
-		if static and counts[False] >= 1: # context.guild.emoji_limit:
+		if static and counts[False] >= context.guild.emoji_limit:
 			image_data = await utils.image.convert_to_gif_in_subprocess(image_data)
 			converted = True
 

@@ -197,7 +197,8 @@ class Emotes(commands.Cog):
 		"""Add several emotes from a .zip or .tar archive.
 
 		You may either pass a URL to an archive or upload one as an attachment.
-		All .gif, .png, and .jpg files in the archive will be uploaded as emotes.
+		All valid GIF, PNG, and JPEG files in the archive will be uploaded as emotes.
+		The rest will be ignored.
 		"""
 		if url and context.message.attachments:
 			raise commands.BadArgument('Either a URL or an attachment must be given, not both.')
@@ -219,6 +220,10 @@ class Emotes(commands.Cog):
 	async def add_from_archive(self, context, archive):
 		limit = 50_000_000  # prevent someone from trying to make a giant compressed file
 		async for name, img, error in utils.archive.extract_async(io.BytesIO(archive), size_limit=limit):
+			try:
+				utils.image.mime_type_for_image(img)
+			except errors.InvalidImageError:
+				continue
 			if error is None:
 				name = self.format_emote_filename(posixpath.basename(name))
 				async with context.typing():

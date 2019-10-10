@@ -265,8 +265,7 @@ class Emotes(commands.Cog):
 	async def add_safe_bytes(self, context, name, author_id, image_data: bytes, *, reason=None):
 		"""Try to add an emote from bytes. On error, return a string that should be sent to the user.
 
-		If the image is static and there are not enough free static slots, prompt to convert the image to a single-frame
-		gif instead.
+		If the image is static and there are not enough free static slots, convert the image to a gif instead.
 		"""
 		counts = collections.Counter(map(operator.attrgetter('animated'), context.guild.emojis))
 		# >= rather than == because there are sneaky ways to exceed the limit

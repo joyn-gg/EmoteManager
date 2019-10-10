@@ -70,8 +70,7 @@ def extract_tar(archive, *, size_limit=None):
 			yield ArchiveInfo(member.name, content=tar.extractfile(member).read(), error=None)
 
 async def extract_async(archive: typing.io.BinaryIO, size_limit=None):
-	gen = await asyncio.get_event_loop().run_in_executor(None, extract, archive)
-	for x in gen:
+	for x in extract(archive, size_limit=size_limit):
 		yield await asyncio.sleep(0, x)
 
 def main():

@@ -214,8 +214,15 @@ class Emotes(commands.Cog):
 		async with context.typing():
 			with zipfile.ZipFile(out, 'w', compression=zipfile.ZIP_STORED) as zip:
 				async def store(emote):
+					# place some level of trust on discord's CDN to actually give us images
 					data = await self.fetch_safe(str(emote.url), validate_headers=False)
-					zip.writestr(f'{emote.name}.{"gif" if emote.animated else "png"}', data)
+					if type(data) is str:
+						await context.send(f'{emote}: {data}')
+						return
+					zinfo = zipfile.ZipInfo(
+						f'{emote.name}.{"gif" if emote.animated else "png"}',
+						date_time=emote.created_at.timetuple()[:6])
+					zip.writestr(zinfo, data)
 				await utils.gather_or_cancel(*(store(emote) for emote in emotes))
 
 		out.seek(0)

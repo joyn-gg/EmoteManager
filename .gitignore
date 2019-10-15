@@ -12,3 +12,4 @@ config.py
 *.png
 *.gif
 *.jpg
+*.zip

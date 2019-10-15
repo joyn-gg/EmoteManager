@@ -22,8 +22,13 @@ To add the bot to your server, visit https://discordapp.com/oauth2/authorize?cli
 </p>
 
 <p>
-	To add several emotes from a zip or tar archive, run <code>@Emote Manager add-archive</code> with an attached file.
+	To add several emotes from a zip or tar archive, run <code>@Emote Manager import</code> with an attached file.
 	You can also pass a URL to a zip or tar archive.
+</p>
+
+<p>
+	<code>@Emote Manager export [animated/static]</code> creates a zip file of all emotes
+	suitable for use with the <code>import</code> command.
 </p>
 
 <p>

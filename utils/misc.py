@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 
-import discord
-
 """various utilities for use within the bot"""
+
+import asyncio
+
+import discord
 
 def format_user(bot, id, *, mention=False):
 	"""Format a user ID for human readable display."""
@@ -37,3 +39,16 @@ def strip_angle_brackets(string):
 	if string.startswith('<') and string.endswith('>'):
 		return string[1:-1]
 	return string
+
+async def gather_or_cancel(*awaitables, loop=None):
+	"""run the awaitables in the sequence concurrently. If any of them raise an exception,
+	propagate the first exception raised and cancel all other awaitables.
+	"""
+	gather_task = asyncio.gather(*awaitables, loop=loop)
+	try:
+		return await gather_task
+	except asyncio.CancelledError:
+		raise
+	except:
+		gather_task.cancel()
+		raise

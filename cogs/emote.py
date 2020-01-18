@@ -198,13 +198,16 @@ class Emotes(commands.Cog):
 
 		await context.send(message)
 
-	@commands.command(name='export')
+	@commands.command()
+	@commands.bot_has_permissions(attach_files=True)
 	async def export(self, context, *, image_type: emote_type_filter = lambda _: True):
 		"""Export all emotes from this server to a zip file, suitable for use with the import command.
 
 		If “animated” is provided, only include animated emotes.
 		If “static” is provided, only include static emotes.
 		Otherwise, or if “all” is provided, export all emotes.
+
+		This command requires the “attach files” permission.
 		"""
 		emotes = list(filter(image_type, context.guild.emojis))
 		if not emotes:

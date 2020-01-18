@@ -25,6 +25,7 @@ class Meta(commands.Cog):
 			'external_emojis',
 			'manage_emojis',
 			'embed_links',
+			'attach_files',
 		), True))
 
 		await context.send('<%s>' % discord.utils.oauth_url(self.bot.user.id, permissions))

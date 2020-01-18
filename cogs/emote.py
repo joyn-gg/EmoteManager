@@ -346,7 +346,7 @@ class Emotes(commands.Cog):
 			except aiohttp.ClientResponseError:
 				raise
 			except aiohttp.ClientError as exc:
-				raise errors.EmoteManagerError('An error occurred while retrieving the file: {exc}')
+				raise errors.EmoteManagerError(f'An error occurred while retrieving the file: {exc}')
 
 		if validate_headers: await validate(self.http.head(url, timeout=self.bot.config.get('http_head_timeout', 10)))
 		return await validate(self.http.get(url))

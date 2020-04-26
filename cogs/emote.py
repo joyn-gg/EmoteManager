@@ -83,7 +83,7 @@ class Emotes(commands.Cog):
 		if not context.guild or not isinstance(context.author, discord.Member):
 			raise commands.NoPrivateMessage
 
-		if context.command is self.list:
+		if context.command is self.list or context.command is self.status:
 			return True
 
 		if (
@@ -405,6 +405,46 @@ class Emotes(commands.Cog):
 		paginator = ListPaginator(context, processed)
 		self.paginators.add(paginator)
 		await paginator.begin()
+
+	@commands.command()
+	async def status(self, context):
+		"""See Current status of emotes on this server.
+		"""
+		premium_tier = context.guild.premium_tier
+
+		if premium_tier == 1:
+			max_emotes = 200
+		elif premium_tier == 2:
+			max_emotes = 300
+		elif premium_tier == 3:
+			max_emotes = 500
+		else:
+			max_emotes = 100
+
+		# number of emotes per category
+		per_cat = max_emotes // 2
+
+		static_emotes = animated_emotes = total_emotes = 0
+		for emote in context.guild.emojis:
+			if emote.animated:
+				animated_emotes += 1
+			else:
+				static_emotes += 1
+
+			total_emotes += 1
+
+		percent_static = round((static_emotes / per_cat) * 100, 2)
+		percent_animated = round((animated_emotes / per_cat) * 100, 2)
+		static_left = per_cat - static_emotes
+		animated_left = per_cat - animated_emotes
+
+		message = [
+			f'Static emotes: **{static_emotes} / {per_cat}** ({static_left} left, {percent_static}% full)',
+			f'Animated emotes: **{animated_emotes} / {per_cat}** ({animated_left} left, {percent_animated}% full)',
+			f'Total: **{total_emotes} / {max_emotes}**'
+		]
+
+		await context.send('\n'.join(message))
 
 	async def parse_emote(self, context, name_or_emote):
 		match = utils.emote.RE_CUSTOM_EMOTE.match(name_or_emote)

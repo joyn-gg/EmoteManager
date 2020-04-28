@@ -83,7 +83,7 @@ class Emotes(commands.Cog):
 		if not context.guild or not isinstance(context.author, discord.Member):
 			raise commands.NoPrivateMessage
 
-		if context.command is self.list or context.command is self.status:
+		if context.command is self.list or context.command is self.stats:
 			return True
 
 		if (
@@ -406,10 +406,9 @@ class Emotes(commands.Cog):
 		self.paginators.add(paginator)
 		await paginator.begin()
 
-	@commands.command()
-	async def status(self, context):
-		"""See Current status of emotes on this server.
-		"""
+	@commands.command(aliases=['status'])
+	async def stats(self, context):
+		"""The current number of animated and static emotes relative to the limits."""
 		emote_limit = context.guild.emoji_limit
 
 		static_emotes = animated_emotes = total_emotes = 0

@@ -7,6 +7,7 @@ import contextlib
 import functools
 import io
 import logging
+import signal
 import sys
 import typing
 
@@ -122,7 +123,7 @@ async def process_image_in_subprocess(command_name, image_data: bytes):
 	try:
 		image_data, err = await asyncio.wait_for(proc.communicate(image_data), timeout=float('inf'))
 	except asyncio.TimeoutError:
-		proc.kill()
+		proc.send_signal(signal.SIGINT)
 		raise errors.ImageResizeTimeoutError if command_name == 'resize' else errors.ImageConversionTimeoutError
 	else:
 		if proc.returncode == 2:

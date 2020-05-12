@@ -28,6 +28,8 @@
 		},
 	},
 
+	'copyright_license_file': 'short-license.txt',
+
 	'socks5_proxy_url': None,  # required for connecting to the EC API over a Tor onion service
 	'use_socks5_for_all_connections': False,  # whether to use socks5 for all HTTP operations (other than discord.py)
 	'user_agent': 'EmoteManagerBot (https://github.com/iomintz/emote-manager-bot)',

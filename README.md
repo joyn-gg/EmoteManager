@@ -42,3 +42,8 @@ To add the bot to your server, visit https://discordapp.com/oauth2/authorize?cli
 <p>
 	<code>@Emote Manager rename old_name new_name</code> will rename :old_name: to :new_name:.
 </p>
+
+
+## License
+
+AGPLv3, see LICENSE.md. © 2018–2020 io mintz <io@mintz.cc>

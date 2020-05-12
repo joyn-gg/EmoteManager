@@ -1,5 +1,17 @@
-#!/usr/bin/env python3
-# encoding: utf-8
+# © 2018–2020 io mintz <io@mintz.cc>
+#
+# Emote Manager is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# Emote Manager is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Emote Manager. If not, see <https://www.gnu.org/licenses/>.
 
 """various utilities for use within the bot"""
 

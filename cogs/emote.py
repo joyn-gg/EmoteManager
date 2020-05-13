@@ -109,7 +109,7 @@ class Emotes(commands.Cog):
 	@commands.Cog.listener()
 	async def on_command_error(self, context, error):
 		if isinstance(error, errors.EmoteManagerError):
-			await context.send(str(error))
+			await context.send(error)
 
 		if isinstance(error, commands.NoPrivateMessage):
 			await context.send(

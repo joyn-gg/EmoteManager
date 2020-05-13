@@ -38,7 +38,7 @@ class Bot(Bot):
 	)
 
 	def __init__(self, **kwargs):
-		with open('config.py') as f:
+		with open('data/config.py') as f:
 			config = eval(f.read(), {})
 
 		super().__init__(config=config, **kwargs)

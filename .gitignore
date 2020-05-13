@@ -7,7 +7,8 @@ __pycache__/
 .venv/
 venv/
 
-config.py
+/config.py
+/data/config.py
 
 *.png
 *.gif

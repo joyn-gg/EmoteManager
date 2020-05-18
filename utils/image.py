@@ -87,6 +87,8 @@ def mime_type_for_image(data):
 		return 'image/jpeg'
 	if data.startswith((b'GIF87a', b'GIF89a')):
 		return 'image/gif'
+	if data.startswith(b'RIFF') and data[8:12] == b'WEBP':
+		return 'image/webp'
 	raise errors.InvalidImageError
 
 def image_to_base64_url(data):

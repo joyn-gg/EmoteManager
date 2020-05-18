@@ -60,14 +60,14 @@ class FileTooBigError(EmoteManagerError):
 		self.limit = limit
 
 class InvalidFileError(EmoteManagerError):
-	"""The file is not a zip, tar, GIF, PNG, or JPG file."""
+	"""The file is not a zip, tar, GIF, PNG, JPG, or WEBP file."""
 	def __init__(self):
 		super().__init__('Invalid file given.')
 
 class InvalidImageError(InvalidFileError):
 	"""The image is not a GIF, PNG, or JPG"""
 	def __init__(self):
-		super(Exception, self).__init__('The image supplied was not a GIF, PNG, or JPG.')
+		super(Exception, self).__init__('The image supplied was not a GIF, PNG, JPG, or WEBP file.')
 
 class PermissionDeniedError(EmoteManagerError):
 	"""Raised when a user tries to modify an emote without the Manage Emojis permission"""

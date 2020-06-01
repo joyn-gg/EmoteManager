@@ -37,7 +37,7 @@ import utils
 import utils.archive
 import utils.image
 from utils import errors
-from utils.converter import emote_type_filter
+from utils.converter import emote_type_filter_default
 from utils.paginator import ListPaginator
 
 logger = logging.getLogger(__name__)
@@ -210,9 +210,10 @@ class Emotes(commands.Cog):
 
 		await context.send(message)
 
+	@emote_type_filter_default
 	@commands.command()
 	@commands.bot_has_permissions(attach_files=True)
-	async def export(self, context, *, image_type: emote_type_filter = lambda _: True):
+	async def export(self, context, image_type='all'):
 		"""Export all emotes from this server to a zip file, suitable for use with the import command.
 
 		If “animated” is provided, only include animated emotes.
@@ -404,18 +405,19 @@ class Emotes(commands.Cog):
 
 		await context.send(fr'Emote successfully renamed to \:{new_name}:')
 
+	@emote_type_filter_default
 	@commands.command(aliases=('ls', 'dir'))
-	async def list(self, context, animated: emote_type_filter = lambda _: True):
+	async def list(self, context, image_type='all'):
 		"""A list of all emotes on this server.
 
 		The list shows each emote and its raw form.
 
 		If "animated" is provided, only show animated emotes.
 		If "static" is provided, only show static emotes.
-		Otherwise, or if “all” is provided, show all emotes.
+		If “all” is provided, show all emotes.
 		"""
 		emotes = sorted(
-			filter(animated, context.guild.emojis),
+			filter(image_type, context.guild.emojis),
 			key=lambda e: e.name.lower())
 
 		processed = []

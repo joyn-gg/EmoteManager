@@ -65,7 +65,7 @@ def main():
 
 	if len(sys.argv) >= 3:
 		shard_count = int(sys.argv[1])
-		shard_ids = list(map(int, sys.argv[2].split(',')))
+		shard_ids = list(map(int, sys.argv[2].split('-')))
 		Bot(**kwargs, shard_count=shard_count, shard_ids=shard_ids).run()
 	else:
 		Bot(**kwargs).run()

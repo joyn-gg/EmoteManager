@@ -9,6 +9,7 @@ venv/
 
 /config.py
 /data/config.py
+/data/guild_counts.json
 
 *.png
 *.gif

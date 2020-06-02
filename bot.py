@@ -31,9 +31,9 @@ class Bot(Bot):
 	startup_extensions = (
 		'cogs.emote',
 		'cogs.meta',
+		'cogs.stats',
 		'bot_bin.debug',
 		'bot_bin.misc',
-		'bot_bin.stats',
 		'jishaku',
 	)
 
@@ -58,5 +58,17 @@ class Bot(Bot):
 			return super().activity
 		return super().activity or discord.Game(f'@{self.user.name} help')
 
+def main():
+	import sys
+
+	kwargs = dict(guild_subscriptions=False, request_offline_members=False)
+
+	if len(sys.argv) >= 3:
+		shard_count = int(sys.argv[1])
+		shard_ids = list(map(int, sys.argv[2].split(',')))
+		Bot(**kwargs, shard_count=shard_count, shard_ids=shard_ids).run()
+	else:
+		Bot(**kwargs).run()
+
 if __name__ == '__main__':
-	Bot().run()
+	main()

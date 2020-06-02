@@ -53,11 +53,6 @@ class Bot(Bot):
 		utils.SUCCESS_EMOJIS = utils.misc.SUCCESS_EMOJIS = (
 			self.config.get('response_emojis', {}).get('success', default))
 
-	def initial_activity(self):
-		if not self.is_ready():
-			return super().activity
-		return super().activity or discord.Game(f'@{self.user.name} help')
-
 	def load_extensions(self):
 		super().load_extensions()
 		if self.config.get('systemd'):

@@ -4,6 +4,11 @@
 		'NOTE: Most commands will be unavailable until both you and the bot have the '
 		'"Manage Emojis" permission.',
 
+	# Whether to use systemd notify to inform systemd of the bot being ready.
+	# This can be used for fine-grained dependency management, where one cluster doesn't start until the previous
+	# finishes starting up.
+	'systemd': False,
+
 	# a channel ID to invite people to when they request help with the bot
 	# the bot must have Create Instant Invite permissions for this channel
 	# if set to None, the support command will be disabled

@@ -58,6 +58,11 @@ class Bot(Bot):
 			return super().activity
 		return super().activity or discord.Game(f'@{self.user.name} help')
 
+	def load_extensions(self):
+		super().load_extensions()
+		if self.config.get('systemd'):
+			self.load_extension('cogs.systemd')
+
 def main():
 	import sys
 

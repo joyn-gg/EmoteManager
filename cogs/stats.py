@@ -43,6 +43,9 @@ class Stats(BotBinStats):
 
 	@commands.Cog.listener()
 	async def on_ready(self):
+		for shard_id in self.bot.shard_ids:
+			self.shlist[shard_id] = 0
+
 		for guild in self.bot.guilds:
 			self.shlist[guild.shard_id] += 1
 

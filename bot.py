@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Emote Manager. If not, see <https://www.gnu.org/licenses/>.
 
+import base64
 import logging
 import traceback
 
@@ -42,6 +43,9 @@ class Bot(Bot):
 			config = eval(f.read(), {})
 
 		super().__init__(config=config, **kwargs)
+		# allow use of the bot's user ID before ready()
+		token_part0 = self.config['tokens']['discord'].partition('.')[0].encode()
+		self.user_id = int(base64.b64decode(token_part0 + b'=' * (3 - len(token_part0) % 3)))
 
 	def process_config(self):
 		"""Load the emojis from the config to be used when a command fails or succeeds

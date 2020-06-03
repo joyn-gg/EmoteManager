@@ -23,10 +23,7 @@ class Stats(BotBinStats):
 		super().__init__(bot)
 		seq = [0] * self.bot.shard_count if self.is_opener() else None
 		# Use our user ID as part of the shm name to allow running multiple instances of the bot on the same machine.
-		# on_ready() hasn't run yet, so we don't have self.bot.user.
-		token = self.bot.config['tokens']['discord']
-		user_id = token.partition('.')[0]
-		self.shlist = ShareableList(seq, name=f'emote-manager-{user_id}')
+		self.shlist = ShareableList(seq, name=f'emote-manager-{self.bot.user_id}')
 
 	def is_opener(self):
 		"""return whether this is the process that should open the shared memory"""

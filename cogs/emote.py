@@ -49,7 +49,7 @@ class UserCancelledError(commands.UserInputError):
 	pass
 
 class Emotes(commands.Cog):
-	IMAGE_MIMETYPES = {'image/png', 'image/jpeg', 'image/gif'}
+	IMAGE_MIMETYPES = {'image/png', 'image/jpeg', 'image/gif', 'image/webp'}
 	# TAR_MIMETYPES = {'application/x-tar', 'application/x-xz', 'application/gzip', 'application/x-bzip2'}
 	TAR_MIMETYPES = {'application/x-tar'}
 	ZIP_MIMETYPES = {'application/zip', 'application/octet-stream', 'application/x-zip-compressed', 'multipart/x-zip'}

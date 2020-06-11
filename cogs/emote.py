@@ -334,7 +334,7 @@ class Emotes(commands.Cog):
 		try:
 			emote = await self.create_emote_from_bytes(context.guild, name, author_id, image_data, reason=reason)
 		except discord.InvalidArgument:
-			return discord.utils.escape_mentions(f'{name}: The file supplied was not a valid GIF, PNG, or JPEG file.')
+			return discord.utils.escape_mentions(f'{name}: The file supplied was not a valid GIF, PNG, JPEG, or WEBP file.')
 		except discord.HTTPException as ex:
 			return discord.utils.escape_mentions(
 				f'{name}: An error occurred while creating the the emote:\n'
@@ -342,7 +342,7 @@ class Emotes(commands.Cog):
 		s = f'Emote {emote} successfully created'
 		return s + ' as a GIF.' if converted else s + '.'
 
-	async def fetch(self, url, valid_mimetypes=None, *, validate_headers=True):
+	async def fetch(self, url, valid_mimetypes=IMAGE_MIMETYPES, *, validate_headers=True):
 		valid_mimetypes = valid_mimetypes or self.IMAGE_MIMETYPES
 		def validate_headers(response):
 			response.raise_for_status()

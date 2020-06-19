@@ -21,6 +21,7 @@ import io
 import logging
 import operator
 import posixpath
+import re
 import traceback
 import urllib.parse
 import zipfile
@@ -133,6 +134,26 @@ class Emotes(commands.Cog):
 		async with context.typing():
 			message = await self.add_safe(context, name, url, context.message.author.id)
 		await context.send(message)
+
+	@commands.command(name='add-these')
+	async def add_these(self, context, *emotes):
+		"""Add a bunch of custom emotes."""
+
+		ran = False
+		# we could use *emotes: discord.PartialEmoji here but that would require spaces between each emote.
+		# and would fail if any arguments were not valid emotes
+		for match in re.finditer(utils.emote.RE_CUSTOM_EMOTE, ''.join(emotes)):
+			ran = True
+			animated, name, id = match.groups()
+			image_url = utils.emote.url(id, animated=animated)
+			async with context.typing():
+				message = await self.add_safe(context, name, image_url, context.author.id)
+				await context.send(message)
+
+		if not ran:
+			return await context.send('Error: no custom emotes were provided.')
+
+		await context.message.add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@classmethod
 	def parse_add_command_args(cls, context, args):

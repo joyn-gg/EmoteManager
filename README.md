@@ -20,6 +20,10 @@ Emote Manager is a souped up version of the Emoji settings screen in your server
 </p>
 
 <p>
+	To add a bunch of custom emotes, use <u>em/add-these [emote 1] [emote 2] [emote 3]&hellip;</u>.
+</p>
+
+<p>
     To add several emotes from a zip or tar archive, run <u>em/import</u> with an attached file.
     You can also pass a URL to a zip or tar archive.
 </p>

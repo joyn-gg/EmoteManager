@@ -55,7 +55,7 @@ class Emotes(commands.Cog):
 	TAR_MIMETYPES = {'application/x-tar'}
 	ZIP_MIMETYPES = {'application/zip', 'application/octet-stream', 'application/x-zip-compressed', 'multipart/x-zip'}
 	ARCHIVE_MIMETYPES = TAR_MIMETYPES | ZIP_MIMETYPES
-	ZIP_OVERHEAD_BYTES = 22
+	ZIP_OVERHEAD_BYTES = 30
 
 	def __init__(self, bot):
 		self.bot = bot
@@ -253,44 +253,58 @@ class Emotes(commands.Cog):
 				await context.send(file=zip_file)
 
 	async def archive_emotes(self, context, emotes):
-		d = collections.deque(emotes)
+		filesize_limit = 1024 ** 2  # XXX testing
+
 		discrims = collections.defaultdict(int)
+		downloaded = collections.deque()
+		async def download(emote):
+			# don't put two files in the zip with the same name
+			discrims[emote.name] += 1
+			discrim = discrims[emote.name]
+			if discrim == 1:
+				name = emote.name
+			else:
+				name = f'{emote.name}-{discrim}'
+
+			name = f'{name}.{"gif" if emote.animated else "png"}'
+
+			# place some level of trust on discord's CDN to actually give us images
+			data = await self.fetch_safe(str(emote.url), validate_headers=False)
+			if type(data) is str:  # error case
+				await context.send(f'{emote}: {data}')
+				return
+
+			est_zip_overhead = len(name) + self.ZIP_OVERHEAD_BYTES
+			est_size_in_zip = est_zip_overhead + len(data)
+			if est_size_in_zip >= filesize_limit:
+				self.bot.loop.create_task(
+					context.send(f'{emote} could not be added because it alone would exceed the file size limit.')
+				)
+				return
+
+			downloaded.append((name, emote.created_at, est_size_in_zip, data))
+
+		await utils.gather_or_cancel(*map(download, emotes))
+
 		count = 1
 		while True:
 			out = io.BytesIO()
 			with zipfile.ZipFile(out, 'w', compression=zipfile.ZIP_STORED) as zip:
 				while True:
 					try:
-						emote = d.popleft()
+						item = downloaded.popleft()
 					except IndexError:
 						break
 
-					# don't put two files in the zip with the same name
-					discrims[emote.name] += 1
-					discrim = discrims[emote.name]
-					if discrim == 1:
-						name = emote.name
-					else:
-						name = f'{emote.name}-{discrim}'
+					name, created_at, est_size, image_data = item
 
-					# place some level of trust on discord's CDN to actually give us images
-					data = await self.fetch_safe(str(emote.url), validate_headers=False)
-					name = f'{name}.{"gif" if emote.animated else "png"}'
-					if type(data) is str:  # error case
-						await context.send(f'{emote}: {data}')
-						continue
-
-					if len(data) >= context.guild.filesize_limit:
-						await context.send(f'{emote} could not be added because it alone exceeds the file size limit.')
-						continue
-					estimated_zip_overhead = len(name) + self.ZIP_OVERHEAD_BYTES
-					if out.tell() + len(data) + estimated_zip_overhead >= context.guild.filesize_limit:
+					if out.tell() + est_size >= filesize_limit:
 						# adding this emote would bring us over the file size limit
-						d.appendleft(emote)
+						downloaded.appendleft(item)
 						break
 
-					zinfo = zipfile.ZipInfo(name, date_time=emote.created_at.timetuple()[:6])
-					zip.writestr(zinfo, data)
+					zinfo = zipfile.ZipInfo(name, date_time=created_at.timetuple()[:6])
+					zip.writestr(zinfo, image_data)
 
 				if out.tell() == 0:
 					# no emotes were written

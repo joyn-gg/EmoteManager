@@ -253,8 +253,7 @@ class Emotes(commands.Cog):
 				await context.send(file=zip_file)
 
 	async def archive_emotes(self, context, emotes):
-		filesize_limit = 1024 ** 2  # XXX testing
-
+		filesize_limit = context.guild.filesize_limit
 		discrims = collections.defaultdict(int)
 		downloaded = collections.deque()
 		async def download(emote):

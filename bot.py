@@ -35,6 +35,7 @@ class Bot(Bot):
 		'cogs.stats',
 		'bot_bin.debug',
 		'bot_bin.misc',
+		'bot_bin.systemd',
 		'jishaku',
 	)
 
@@ -56,11 +57,6 @@ class Bot(Bot):
 		default = ('❌', '✅')
 		utils.SUCCESS_EMOJIS = utils.misc.SUCCESS_EMOJIS = (
 			self.config.get('response_emojis', {}).get('success', default))
-
-	def load_extensions(self):
-		super().load_extensions()
-		if self.config.get('systemd'):
-			self.load_extension('cogs.systemd')
 
 def main():
 	import sys

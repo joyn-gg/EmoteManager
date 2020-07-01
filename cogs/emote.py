@@ -200,7 +200,7 @@ class Emotes(commands.Cog):
 	@staticmethod
 	def format_emote_filename(filename):
 		"""format a filename to an emote name as discord does when you upload an emote image"""
-		return posixpath.splitext(filename)[0].replace(' ', '')
+		return posixpath.splitext(filename)[0].rpartition('-')[0].replace(' ', '')
 
 	@commands.command(name='add-from-ec', aliases=['addfromec'])
 	async def add_from_ec(self, context, name, *names):

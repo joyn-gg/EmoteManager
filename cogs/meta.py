@@ -25,6 +25,41 @@ class Meta(commands.Cog):
 
 	def __init__(self, bot):
 		self.bot = bot
+		self.support_channel = None
+		self.task = bot.loop.create_task(self.cache_invite_channel())
+
+	def cog_unload(self):
+		self.task.cancel()
+
+	async def cache_invite_channel(self):
+		self.support_channel = ch = await self.bot.fetch_channel(self.bot.config['support_server_invite_channel'])
+		return ch
+
+	@commands.command()
+	async def support(self, context):
+		"""Directs you to the support server."""
+		ch = self.support_channel or await self.cache_invite_channel()
+
+		reason = f'Created for {context.author} (ID: {context.author.id})'
+		invite = await ch.create_invite(
+			max_age=self.INVITE_DURATION_SECONDS,
+			max_uses=self.MAX_INVITE_USES,
+			reason=reason,
+		)
+
+		try:
+			await context.author.send(f'Official support server invite: {invite}')
+		except discord.Forbidden:
+			with contextlib.suppress(discord.HTTPException):
+				await context.message.add_reaction(utils.SUCCESS_EMOJIS[True])
+			with contextlib.suppress(discord.HTTPException):
+				await context.send('Unable to send invite in DMs. Please allow DMs from server members.')
+		else:
+			try:
+				await context.message.add_reaction('📬')
+			except discord.HTTPException:
+				with contextlib.suppress(discord.HTTPException):
+					await context.send('📬')
 
 	@commands.command(aliases=['inv'])
 	async def invite(self, context):
@@ -41,31 +76,6 @@ class Meta(commands.Cog):
 		), True))
 
 		await context.send('<%s>' % discord.utils.oauth_url(self.bot.user.id, permissions))
-
-	@commands.command()
-	async def support(self, context):
-		"""Directs you to the support server."""
-		ch = self.bot.get_channel(self.bot.config['support_server_invite_channel'])
-		if ch is None:
-			await context.send('This command is temporarily unavailable. Try again later?')
-			return
-
-		reason = f'Created for {context.author} (ID: {context.author.id})'
-		invite = await ch.create_invite(max_age=self.INVITE_DURATION_SECONDS, max_uses=self.MAX_INVITE_USES, reason=reason)
-
-		try:
-			await context.author.send(f'Official support server invite: {invite}')
-		except discord.Forbidden:
-			with contextlib.suppress(discord.HTTPException):
-				await context.message.add_reaction(utils.SUCCESS_EMOJIS[True])
-			with contextlib.suppress(discord.HTTPException):
-				await context.send('Unable to send invite in DMs. Please allow DMs from server members.')
-		else:
-			try:
-				await context.message.add_reaction('📬')
-			except discord.HTTPException:
-				with contextlib.suppress(discord.HTTPException):
-					await context.send('📬')
 
 def setup(bot):
 	bot.add_cog(Meta(bot))

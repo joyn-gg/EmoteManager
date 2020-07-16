@@ -24,6 +24,7 @@ class Stats(BotBinStats):
 		seq = [0] * self.bot.shard_count if self.is_opener() else None
 		# Use our user ID as part of the shm name to allow running multiple instances of the bot on the same machine.
 		self.shlist = ShareableList(seq, name=f'emote-manager-{self.bot.user_id}')
+		self.count()
 
 	def is_opener(self):
 		"""return whether this is the process that should open the shared memory"""
@@ -40,14 +41,16 @@ class Stats(BotBinStats):
 
 	@commands.Cog.listener()
 	async def on_ready(self):
+		self.count()
+		if self.is_reporter():
+			await self.send()
+
+	def count(self):
 		for shard_id in self.bot.shard_ids:
 			self.shlist[shard_id] = 0
 
 		for guild in self.bot.guilds:
 			self.shlist[guild.shard_id] += 1
-
-		if self.is_reporter():
-			await self.send()
 
 	@commands.Cog.listener()
 	async def on_guild_join(self, guild):

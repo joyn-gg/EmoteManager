@@ -1,6 +1,6 @@
 aioec>=0.6.0
 aiohttp_socks
 bot_bin>=1.5.0,<2.0.0
-discord.py>=1.0.1,<2.0.0
+discord.py>=1.4.0,<2.0.0
 jishaku
 wand

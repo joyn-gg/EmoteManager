@@ -61,15 +61,16 @@ class Bot(Bot):
 def main():
 	import sys
 
-	kwargs = dict(guild_subscriptions=False, request_offline_members=False)
-
 	if len(sys.argv) < 3:
 		print('Usage:', sys.argv[0], '<shard count> <hyphen-separated list of shard IDs>', file=sys.stderr)
 		sys.exit(1)
 
-	shard_count = int(sys.argv[1])
-	shard_ids = list(map(int, sys.argv[2].split('-')))
-	Bot(**kwargs, shard_count=shard_count, shard_ids=shard_ids).run()
+	Bot(
+		guild_subscriptions=True,
+		request_offline_members=False,
+		shard_count=int(sys.argv[1]),
+		shard_ids=list(map(int, sys.argv[2].split('-'))),
+	).run()
 
 if __name__ == '__main__':
 	main()

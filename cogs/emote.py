@@ -102,7 +102,7 @@ class Emotes(commands.Cog):
 		if not context.guild:
 			raise commands.NoPrivateMessage
 
-		# we can't just do `context.command.qualified_name in self.public_commands` here
+		# we can't just do `context.command in self.public_commands` here
 		# because apparently Command.__eq__ is not defined
 		if context.command.qualified_name in self.public_commands:
 			return True

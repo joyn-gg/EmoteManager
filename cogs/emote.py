@@ -99,7 +99,7 @@ class Emotes(commands.Cog):
 		return command
 
 	async def cog_check(self, context):
-		if not context.guild or not isinstance(context.author, discord.Member):
+		if not context.guild:
 			raise commands.NoPrivateMessage
 
 		# we can't just do `context.command.qualified_name in self.public_commands` here

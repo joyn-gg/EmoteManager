@@ -93,11 +93,18 @@ class Emotes(commands.Cog):
 
 		self.bot.loop.create_task(close())
 
+	public_commands = set()
+	def public(command, public_commands=public_commands):  # resolve some kinda scope issue that i don't understand
+		public_commands.add(command.qualified_name)
+		return command
+
 	async def cog_check(self, context):
 		if not context.guild or not isinstance(context.author, discord.Member):
 			raise commands.NoPrivateMessage
 
-		if context.command is self.list or context.command is self.stats:
+		# we can't just do `context.command.qualified_name in self.public_commands` here
+		# because apparently Command.__eq__ is not defined
+		if context.command.qualified_name in self.public_commands:
 			return True
 
 		if (
@@ -233,6 +240,7 @@ class Emotes(commands.Cog):
 
 		await context.send(message)
 
+	@public
 	@emote_type_filter_default
 	@commands.command()
 	@commands.bot_has_permissions(attach_files=True)
@@ -475,6 +483,7 @@ class Emotes(commands.Cog):
 
 		await context.send(fr'Emote successfully renamed to \:{new_name}:')
 
+	@public
 	@emote_type_filter_default
 	@commands.command(aliases=('ls', 'dir'))
 	async def list(self, context, image_type='all'):
@@ -499,6 +508,7 @@ class Emotes(commands.Cog):
 		self.paginators.add(paginator)
 		await paginator.begin()
 
+	@public
 	@commands.command(aliases=['status'])
 	async def stats(self, context):
 		"""The current number of animated and static emotes relative to the limits."""
@@ -563,7 +573,6 @@ class Emotes(commands.Cog):
 			raise commands.UserInputError('Sorry, you took too long. Try again.')
 
 		return candidates[int(message.content)-1]
-
 
 def setup(bot):
 	bot.add_cog(Emotes(bot))

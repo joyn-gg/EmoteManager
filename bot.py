@@ -61,15 +61,31 @@ class Bot(Bot):
 def main():
 	import sys
 
-	kwargs = dict(guild_subscriptions=False, request_offline_members=False)
-
 	if len(sys.argv) < 3:
 		print('Usage:', sys.argv[0], '<shard count> <hyphen-separated list of shard IDs>', file=sys.stderr)
 		sys.exit(1)
 
+	# we place these lines up here instead of inline in order to improve tracebacks,
+	# as python tracebacks do not drill down to specific lines of a multi-line expression
 	shard_count = int(sys.argv[1])
 	shard_ids = list(map(int, sys.argv[2].split('-')))
-	Bot(**kwargs, shard_count=shard_count, shard_ids=shard_ids).run()
+
+	Bot(
+		intents=discord.Intents(
+			guilds=True,
+			# we hardly need DM support but it's helpful to be able to run the help/support commands in DMs
+			messages=True,
+			# we don't need DM reactions because we don't ever paginate in DMs
+			guild_reactions=True,
+			emojis=True,
+			# everything else, including `members` and `presences`, is implicitly false.
+		),
+		chunk_guilds_at_startup=False,
+		member_cache_flags=discord.MemberCacheFlags.none(),
+
+		shard_count=shard_count,
+		shard_ids=shard_ids,
+	).run()
 
 if __name__ == '__main__':
 	main()

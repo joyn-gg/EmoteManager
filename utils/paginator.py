@@ -51,14 +51,15 @@ class Paginator:
 
 		self._page = None
 
-	def react_check(self, reaction, user):
-		if user is None or user != self.author:
+	def react_check(self, reaction: discord.RawReactionActionEvent):
+		if reaction.user_id != self.author.id:
 			return False
 
-		if reaction.message.id != self._message.id:
+		if reaction.message_id != self._message.id:
 			return False
 
-		return bool(discord.utils.find(lambda emoji: reaction.emoji == emoji, self.navigation))
+		target_emoji = str(reaction.emoji)
+		return bool(discord.utils.find(lambda emoji: target_emoji == emoji, self.navigation))
 
 	async def begin(self):
 		"""Starts pagination"""
@@ -69,24 +70,19 @@ class Paginator:
 			await self._message.add_reaction(button)
 		while not self._stopped:
 			try:
-				reaction, user = await self._client.wait_for(
-					'reaction_add',
+				reaction: RawReactionActionEvent = await self._client.wait_for(
+					'raw_reaction_add',
 					check=self.react_check,
 					timeout=self.timeout)
 			except asyncio.TimeoutError:
 				await self.stop(delete=self.delete_msg_timeout)
 				continue
 
-			reaction = reaction.emoji
-
-			if reaction not in self.navigation:
-				continue  # not worth our time
-
-			await self.navigation[reaction]()
+			await self.navigation[str(reaction.emoji)]()
 
 			await asyncio.sleep(0.2)
 			with contextlib.suppress(discord.HTTPException):
-				await self._message.remove_reaction(reaction, user)
+				await self._message.remove_reaction(reaction.emoji, discord.Object(reaction.user_id))
 
 	async def stop(self, *, delete=None):
 		"""Aborts pagination."""

@@ -82,6 +82,8 @@ def main():
 		),
 		chunk_guilds_at_startup=False,
 		member_cache_flags=discord.MemberCacheFlags.none(),
+		# disable message cache
+		max_messages=None,
 
 		shard_count=shard_count,
 		shard_ids=shard_ids,

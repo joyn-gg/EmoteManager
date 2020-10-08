@@ -71,7 +71,8 @@ class Stats(BotBinStats):
 	@commands.Cog.listener()
 	async def on_ready(self):
 		self.count()
-		if self.is_reporter():
+		all_shards_ready = all(self.shlist)
+		if self.is_reporter() and all_shards_ready:
 			await self.send()
 
 	def count(self):

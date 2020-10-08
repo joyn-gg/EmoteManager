@@ -34,7 +34,12 @@ class Stats(BotBinStats):
 
 		# Use our user ID as part of the shm name
 		# to allow running multiple instances of the bot on the same machine.
-		shm_name = f'emote-manager-{self.bot.user_id}'
+		# The shard count is incorporated to prevent the following situation:
+		# -	Shard count is increased in the launcher script / unit file from 30 to 33
+		# -	All clusters are restarted
+		# -	Clusters begin using the old 30-element-long list to store their shard counts,
+		#	but because some clusters that haven't restarted yet are still using the old shlist.
+		shm_name = f'emote-manager-{self.bot.user_id}-{self.bot.shard_count}'
 		if self.is_opener():
 			seq = [0] * self.bot.shard_count
 			try:

@@ -534,13 +534,13 @@ class Emotes(commands.Cog):
 			f'Animated emotes: **{animated_emotes} / {emote_limit}** ({animated_left} left, {percent_animated}% full)\n'
 			f'Total: **{total_emotes} / {emote_limit * 2}**')
 
+	@public
 	@commands.command(aliases=["embiggen"])
-	async def big(self, context, emote):
+	async def big(self, context, emote: discord.PartialEmoji):
 		"""Shows the original image for the given emote.
 
 		emote: the emote to embiggen.
 		"""
-		emote = await self.parse_emote(context, emote)
 		await context.send(f'{emote.name}: {emote.url}')
 
 	async def parse_emote(self, context, name_or_emote):

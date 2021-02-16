@@ -32,7 +32,6 @@ class Bot(Bot):
 	startup_extensions = (
 		'cogs.emote',
 		'cogs.meta',
-		'cogs.stats',
 		'bot_bin.debug',
 		'bot_bin.misc',
 		'bot_bin.systemd',

@@ -60,14 +60,15 @@ class Bot(Bot):
 def main():
 	import sys
 
-	if len(sys.argv) < 3:
-		print('Usage:', sys.argv[0], '<shard count> <hyphen-separated list of shard IDs>', file=sys.stderr)
+	if len(sys.argv) == 1:
+		shard_count = None
+		shard_ids = None
+	elif len(sys.argv) < 3:
+		print('Usage:', sys.argv[0], '[<shard count> <hyphen-separated list of shard IDs>]', file=sys.stderr)
 		sys.exit(1)
-
-	# we place these lines up here instead of inline in order to improve tracebacks,
-	# as python tracebacks do not drill down to specific lines of a multi-line expression
-	shard_count = int(sys.argv[1])
-	shard_ids = list(map(int, sys.argv[2].split('-')))
+	else:
+		shard_count = int(sys.argv[1])
+		shard_ids = list(map(int, sys.argv[2].split('-')))
 
 	Bot(
 		intents=discord.Intents(
@@ -79,6 +80,8 @@ def main():
 			emojis=True,
 			# everything else, including `members` and `presences`, is implicitly false.
 		),
+
+		# the least stateful bot you will ever see 😎
 		chunk_guilds_at_startup=False,
 		member_cache_flags=discord.MemberCacheFlags.none(),
 		# disable message cache

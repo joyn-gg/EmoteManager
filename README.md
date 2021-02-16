@@ -1,7 +1,5 @@
 # Emote Manager
 
-[![Discord Bots](https://top.gg/api/widget/status/473370418007244852.svg)](https://top.gg/bot/473370418007244852)
-
 Emote Manager is a souped up version of the Emoji settings screen in your server's settings.
 
 **Note:** both you and the bot will need the "Manage Emojis" permission to edit custom server emotes.

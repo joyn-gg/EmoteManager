@@ -18,6 +18,8 @@ import contextlib
 import discord
 from discord.ext import commands
 
+import utils
+
 class Meta(commands.Cog):
 	# TODO does this need to be configurable?
 	INVITE_DURATION_SECONDS = 60 * 60 * 3

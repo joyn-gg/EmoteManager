@@ -2,7 +2,8 @@ SET TIME ZONE 'UTC';
 
 -- inserted for every time a command is invoked
 CREATE TABLE invokes (
-	guild_id BIGINT NOT NULL,
+	-- nullable because it may be invoked in DMs
+	guild_id BIGINT,
 	-- hashed for privacy
 	user_id_md5 BYTEA NOT NULL,
 	-- the qualified name of the command invoked (https://discordpy.readthedocs.io/en/stable/ext/commands/api.html?highlight=qualified_name#discord.ext.commands.Command.qualified_name)

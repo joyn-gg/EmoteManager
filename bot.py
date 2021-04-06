@@ -64,7 +64,7 @@ class Bot(Bot):
 		user_id_md5 = hashlib.md5(ctx.author.id.to_bytes(8, byteorder='big'), usedforsecurity=False).digest()
 		await self.pool.execute(
 			'INSERT INTO invokes (guild_id, user_id_md5, command) VALUES ($1, $2, $3)',
-			ctx.guild.id, user_id_md5, ctx.command.qualified_name,
+			getattr(ctx.guild, 'id', None), user_id_md5, ctx.command.qualified_name,
 		)
 
 	# we use on_shard_ready rather than on_ready because the latter is a bit less reliable

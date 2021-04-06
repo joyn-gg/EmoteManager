@@ -58,11 +58,26 @@ class Bot(Bot):
 		utils.SUCCESS_EMOJIS = utils.misc.SUCCESS_EMOJIS = (
 			self.config.get('response_emojis', {}).get('success', default))
 
+	# Metrics
+
 	async def on_command(self, ctx):
 		user_id_md5 = hashlib.md5(ctx.author.id.to_bytes(8, byteorder='big'), usedforsecurity=False).digest()
 		await self.pool.execute(
 			'INSERT INTO invokes (guild_id, user_id_md5, command) VALUES ($1, $2, $3)',
 			ctx.guild.id, user_id_md5, ctx.command.qualified_name,
+		)
+
+	# we use on_shard_ready rather than on_ready because the latter is a bit less reliable
+	async def on_shard_ready(self, shard_id):
+		member_count = sum(guild.member_count for guild in self.guilds if guild.shard_id == shard_id)
+		await self.pool.execute(
+			"""
+			INSERT INTO shard_member_counts (shard_id, member_count)
+			VALUES ($1, $2)
+			ON CONFLICT (shard_id) DO UPDATE
+				SET member_count = EXCLUDED.member_count
+			""",
+			shard_id, member_count,
 		)
 
 def main():

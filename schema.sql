@@ -11,3 +11,9 @@ CREATE TABLE invokes (
 );
 
 CREATE INDEX invokes_invoked_at_idx ON invokes (invoked_at);
+
+CREATE TABLE shard_member_counts (
+	shard_id INT2 PRIMARY KEY,
+	-- sum(guild.member_count for guild in shard)
+	member_count INT4 NOT NULL
+);

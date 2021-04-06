@@ -16,6 +16,7 @@
 # along with Emote Manager. If not, see <https://www.gnu.org/licenses/>.
 
 import base64
+import hashlib
 import logging
 import traceback
 
@@ -42,7 +43,7 @@ class Bot(Bot):
 		with open('data/config.py', encoding='utf-8') as f:
 			config = eval(f.read(), {})
 
-		super().__init__(config=config, **kwargs)
+		super().__init__(config=config, setup_db=True, **kwargs)
 		# allow use of the bot's user ID before ready()
 		token_part0 = self.config['tokens']['discord'].partition('.')[0].encode()
 		self.user_id = int(base64.b64decode(token_part0 + b'=' * (3 - len(token_part0) % 3)))
@@ -56,6 +57,13 @@ class Bot(Bot):
 		default = ('❌', '✅')
 		utils.SUCCESS_EMOJIS = utils.misc.SUCCESS_EMOJIS = (
 			self.config.get('response_emojis', {}).get('success', default))
+
+	async def on_command(self, ctx):
+		user_id_md5 = hashlib.md5(ctx.author.id.to_bytes(8, byteorder='big'), usedforsecurity=False).digest()
+		await self.pool.execute(
+			'INSERT INTO invokes (guild_id, user_id_md5, command) VALUES ($1, $2, $3)',
+			ctx.guild.id, user_id_md5, ctx.command.qualified_name,
+		)
 
 def main():
 	import sys

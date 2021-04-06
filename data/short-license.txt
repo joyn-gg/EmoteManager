@@ -10,5 +10,5 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU Affero General Public License for more details.
 
-You may find a copy of the GNU Affero General Public License at https://github.com/EmoteBot/EmoteManager/blob/master/LICENSE.md.
+You may find a copy of the GNU Affero General Public License at https://github.com/EmoteBot/EmoteManager/blob/metrics/LICENSE.md.
 The rest of the source code is also there.

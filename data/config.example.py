@@ -13,6 +13,11 @@
 		'discord': 'sek.rit.token',
 	},
 
+	# required for metrics
+	# configure it according to https://magicstack.github.io/asyncpg/current/api/index.html#connection
+	'database': {
+	},
+
 	'ignore_bots': {
 		'default': True,
 		'overrides': {

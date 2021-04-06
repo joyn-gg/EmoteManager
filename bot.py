@@ -69,15 +69,19 @@ class Bot(Bot):
 
 	# we use on_shard_ready rather than on_ready because the latter is a bit less reliable
 	async def on_shard_ready(self, shard_id):
-		member_count = sum(guild.member_count for guild in self.guilds if guild.shard_id == shard_id)
+		guilds = [guild for guild in self.guilds if guild.shard_id == shard_id]
+		guild_count = len(guilds)
+		member_count = sum(guild.member_count for guild in guilds)
+
 		await self.pool.execute(
 			"""
-			INSERT INTO shard_member_counts (shard_id, member_count)
-			VALUES ($1, $2)
-			ON CONFLICT (shard_id) DO UPDATE
-				SET member_count = EXCLUDED.member_count
+			INSERT INTO shard_info (shard_id, guild_count, member_count)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (shard_id) DO UPDATE SET
+				guild_count = EXCLUDED.guild_count,
+				member_count = EXCLUDED.member_count
 			""",
-			shard_id, member_count,
+			shard_id, guild_count, member_count,
 		)
 
 def main():

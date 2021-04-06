@@ -16,13 +16,13 @@
 # along with Emote Manager. If not, see <https://www.gnu.org/licenses/>.
 
 import base64
-import hashlib
 import logging
 import traceback
 
 import discord
 from bot_bin.bot import Bot
 from discord.ext import commands
+from utils.compat import md5
 
 logging.basicConfig(level=logging.WARNING)
 logging.getLogger('discord').setLevel(logging.INFO)
@@ -61,7 +61,7 @@ class Bot(Bot):
 	# Metrics
 
 	async def on_command(self, ctx):
-		user_id_md5 = hashlib.md5(ctx.author.id.to_bytes(8, byteorder='big'), usedforsecurity=False).digest()
+		user_id_md5 = md5(ctx.author.id.to_bytes(8, byteorder='big')).digest()
 		await self.pool.execute(
 			'INSERT INTO invokes (guild_id, user_id_md5, command) VALUES ($1, $2, $3)',
 			getattr(ctx.guild, 'id', None), user_id_md5, ctx.command.qualified_name,

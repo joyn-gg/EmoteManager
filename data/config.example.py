@@ -8,6 +8,8 @@
 	# the bot must have Create Instant Invite permissions for this channel
 	# if set to None, the support command will be disabled
 	'support_server_invite_channel': None,
+	
+	'prefixes': ['em/'],
 
 	'tokens': {
 		'discord': 'sek.rit.token',

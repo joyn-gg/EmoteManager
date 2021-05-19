@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # SelectorEventLoop on windows doesn't support subprocesses lol
+import asyncio
+import sys
 if sys.platform == 'win32':
 	loop = asyncio.ProactorEventLoop()
 	asyncio.set_event_loop(loop)

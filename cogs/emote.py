@@ -531,16 +531,23 @@ class Emotes(commands.Cog):
 
 		emote: the emote to embiggen.
 		"""
-		emote = await self.parse_emote(context, emote)
+		emote = await self.parse_emote(context, emote, local=False)
 		await context.send(f'{emote.name}: {emote.url}')
 
-	async def parse_emote(self, context, name_or_emote):
+	async def parse_emote(self, context, name_or_emote, *, local=True):
 		match = utils.emote.RE_CUSTOM_EMOTE.match(name_or_emote)
 		if match:
-			id = int(match.group('id'))
-			emote = discord.utils.get(context.guild.emojis, id=id)
-			if emote:
-				return emote
+			id = int(match['id'])
+			if local:
+				emote = discord.utils.get(context.guild.emojis, id=id)
+				if emote:
+					return emote
+			else:
+				return discord.PartialEmoji(
+					animated=bool(match['animated']),
+					name=match['name'],
+					id=int(match['id']),
+				)
 		name = name_or_emote
 		return await self.disambiguate(context, name)
 

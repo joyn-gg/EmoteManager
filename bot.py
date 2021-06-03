@@ -43,6 +43,7 @@ class Bot(Bot):
 		'bot_bin.debug',
 		'bot_bin.misc',
 		'bot_bin.systemd',
+		'bot_bin.sql',
 		'jishaku',
 	)
 

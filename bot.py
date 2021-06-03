@@ -76,10 +76,6 @@ class Bot(Bot):
 
 	# we use on_shard_ready rather than on_ready because the latter is a bit less reliable
 	async def on_shard_ready(self, shard_id):
-		guilds = [guild for guild in self.guilds if guild.shard_id == shard_id]
-		guild_count = len(guilds)
-		member_count = sum(guild.member_count for guild in guilds)
-
 		await self.pool.execute(
 			"""
 			INSERT INTO shard_info (shard_id, guild_count, member_count)
@@ -88,14 +84,10 @@ class Bot(Bot):
 				guild_count = EXCLUDED.guild_count,
 				member_count = EXCLUDED.member_count
 			""",
-			shard_id, guild_count, member_count,
+			shard_id, *self.shard_stats(shard_id),
 		)
 
 	async def update_shard(self, guild):
-		guilds = [guild2 for guild2 in self.guilds if guild2.shard_id == guild.shard_id]
-		guild_count = len(guilds)
-		member_count = sum(guild.member_count for guild in guilds)
-
 		await self.pool.execute(
 			"""
 			UPDATE shard_info
@@ -104,10 +96,16 @@ class Bot(Bot):
 				member_count = $3
 			WHERE shard_id = $1
 			""",
-			guild.shard_id, guild_count, member_count,
+			guild.shard_id, *self.shard_stats(guild.shard_id),
 		)
 
 	on_guild_join = on_guild_remove = update_shard
+
+	def shard_stats(self, shard_id):
+		guilds = [guild for guild in self.guilds if guild.shard_id == shard_id]
+		guild_count = len(guilds)
+		member_count = sum(getattr(guild, 'member_count', 0) for guild in guilds)
+		return guild_count, member_count
 
 def main():
 	import sys

@@ -91,6 +91,24 @@ class Bot(Bot):
 			shard_id, guild_count, member_count,
 		)
 
+	async def update_shard(self, guild):
+		guilds = [guild2 for guild2 in self.guilds if guild2.shard_id == guild.shard_id]
+		guild_count = len(guilds)
+		member_count = sum(guild.member_count for guild in guilds)
+
+		await self.pool.execute(
+			"""
+			UPDATE shard_info
+			SET
+				guild_count = $2,
+				member_count = $3
+			WHERE shard_id = $1
+			""",
+			guild.shard_id, guild_count, member_count,
+		)
+
+	on_guild_join = on_guild_remove = update_shard
+
 def main():
 	import sys
 

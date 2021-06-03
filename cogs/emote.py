@@ -18,6 +18,7 @@ import cgi
 import collections
 import contextlib
 import io
+import json
 import logging
 import operator
 import posixpath
@@ -28,14 +29,12 @@ import zipfile
 import warnings
 import weakref
 
-import aioec
 import aiohttp
 import discord
 import humanize
 from discord.ext import commands
 
 import utils
-import utils.archive
 import utils.image
 from utils import errors
 from utils.converter import emote_type_filter_default
@@ -76,17 +75,15 @@ class Emotes(commands.Cog):
 					+ self.bot.http.user_agent
 			})
 
-		self.aioec = aioec.Client(
-			loop=self.bot.loop,
-			connector=connector,
-			base_url=self.bot.config.get('ec_api_base_url'))
+		with open('data/ec-emotes-final.json') as f:
+			self.ec_emotes = json.load(f)
+
 		# keep track of paginators so we can end them when the cog is unloaded
 		self.paginators = weakref.WeakSet()
 
 	def cog_unload(self):
 		async def close():
 			await self.http.close()
-			await self.aioec.close()
 
 			for paginator in self.paginators:
 				await paginator.stop()
@@ -212,31 +209,25 @@ class Emotes(commands.Cog):
 
 	@commands.command(name='add-from-ec', aliases=['addfromec'])
 	async def add_from_ec(self, context, name, *names):
-		"""Copies one or more emotes from Emote Collector to your server.
-
-		The list of possible emotes you can copy is here:
-		https://ec.emote.bot/list
-		"""
+		"""Copies one or more emotes from Emote Collector to your server."""
 		if names:
 			for name in (name,) + names:
 				await context.invoke(self.add_from_ec, name)
+			await context.message.add_reaction(utils.SUCCESS_EMOJIS[True])
 			return
 
-		name = name.strip(':')
 		try:
-			emote = await self.aioec.emote(name)
-		except aioec.NotFound:
+			emote = self.ec_emotes[name.strip(':').lower()]
+		except KeyError:
 			return await context.send("Emote not found in Emote Collector's database.")
-		except aioec.HttpException as exception:
-			return await context.send(
-				f'Error: the Emote Collector API returned status code {exception.status}')
 
 		reason = (
 			f'Added from Emote Collector by {utils.format_user(self.bot, context.author.id)}. '
-			f'Original emote author: {utils.format_user(self.bot, emote.author)}')
+			f'Original emote author: {utils.format_user(self.bot, emote["author"])}')
 
+		image_url = utils.emote.url(emote['id'], animated=emote['animated'])
 		async with context.typing():
-			message = await self.add_safe(context, name, emote.url, context.author.id, reason=reason)
+			message = await self.add_safe(context, name, image_url, context.author.id, reason=reason)
 
 		await context.send(message)
 

@@ -53,18 +53,15 @@ class EmoteClient:
 		HTTPStatus.SERVICE_UNAVAILABLE: DiscordServerError,
 	}
 
-	def __init__(self, *, token):
+	def __init__(self, bot):
 		self.guild_rls: Dict[GuildId, GuildRetryTimes] = {}
-		user_agent = (
-			'EmoteManager-EmoteClient; '
-			f'aiohttp/{aiohttp.__version__}; '
-			f'{platform.python_implementation()}/{".".join(map(str, sys.version_info))}'
-		)
 		self.http = aiohttp.ClientSession(headers={
-			'User-Agent': user_agent,
-			'Authorization': 'Bot ' + token,
+			'User-Agent': bot.config['user_agent'] + ' ' + bot.http.user_agent,
+			'Authorization': 'Bot ' + bot.config['tokens']['discord'],
 			'X-Ratelimit-Precision': 'millisecond',
 		})
+		# internals 🤫
+		self._connection_state = bot._connection
 
 	async def request(self, method, path, guild_id, **kwargs):
 		self._check_rl(method, guild_id)
@@ -129,13 +126,17 @@ class EmoteClient:
 	def check_delete(self, guild_id):
 		self._check_rl('DELETE', guild_id)
 
-	async def create(self, *, guild_id, name, image: bytes, role_ids=(), reason=None):
-		return await self.request(
-			'POST', f'/guilds/{guild_id}/emojis',
-			guild_id,
+	async def create(self, *, guild, name, image: bytes, role_ids=(), reason=None):
+		data = await self.request(
+			'POST', f'/guilds/{guild.id}/emojis',
+			guild.id,
 			json=dict(name=name, image=image_utils.image_to_base64_url(image), roles=role_ids),
 			reason=reason,
 		)
+		# internals 🤫
+		# this is A) so we can return a bona-fide, authentic, Emoji object,
+		# and B) because it's what dpy does to keep the emoji cache up to date for s
+		return self._connection_state.store_emoji(guild, data)
 
 	async def delete(self, *, guild_id, emote_id, reason=None):
 		return await self.request('DELETE', f'/guilds/{guild_id}/emojis/{emote_id}', guild_id, reason=reason)

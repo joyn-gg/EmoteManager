@@ -546,6 +546,10 @@ class Emotes(commands.Cog):
 		await context.send(f'{emote.name}: {emote.url}')
 
 	async def parse_emote(self, context, name_or_emote, *, local=True):
+		# this function is mostly synchronous,
+		# so we yield in order to let the emoji cache update between repeated calls
+		await asyncio.sleep(0)
+
 		match = utils.emote.RE_CUSTOM_EMOTE.match(name_or_emote)
 		if match:
 			id = int(match['id'])

@@ -13,11 +13,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Emote Manager. If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
-
-from discord.ext import commands
-
 import utils
+import asyncio
+import humanize
+import datetime
+from discord.ext import commands
 
 class MissingManageEmojisPermission(commands.MissingPermissions):
 	"""The invoker or the bot doesn't have permissions to manage server emojis."""
@@ -45,9 +45,18 @@ class ImageConversionTimeoutError(ImageProcessingTimeoutError):
 		super().__init__('Error: converting the image to a GIF took too long.')
 
 class HTTPException(EmoteManagerError):
-	"""The server did not respond with an OK status code."""
+	"""The server did not respond with an OK status code. This is only for non-Discord HTTP requests."""
 	def __init__(self, status):
 		super().__init__(f'URL error: server returned error code {status}')
+
+class RateLimitedError(EmoteManagerError):
+	def __init__(self, retry_at):
+		if isinstance(retry_at, float):
+			# it took me about an HOUR to realize i had to pass tz because utcfromtimestamp returns a NAÏVE time obj!
+			retry_at = datetime.datetime.fromtimestamp(retry_at, tz=datetime.timezone.utc)
+		# humanize.naturaltime is annoying to work with due to timezones so we use this
+		delta = humanize.naturaldelta(retry_at, when=datetime.datetime.now(tz=datetime.timezone.utc))
+		super().__init__(f'Error: Discord told me to slow down! Please retry this command in {delta}.')
 
 class EmoteNotFoundError(EmoteManagerError):
 	"""An emote with that name was not found"""

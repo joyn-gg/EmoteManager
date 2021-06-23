@@ -37,8 +37,9 @@ from discord.ext import commands
 import utils
 import utils.image
 from utils import errors
-from utils.converter import emote_type_filter_default
 from utils.paginator import ListPaginator
+from utils.emote_client import EmoteClient
+from utils.converter import emote_type_filter_default
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,8 @@ class Emotes(commands.Cog):
 					+ self.bot.http.user_agent
 			})
 
+		self.emote_client = EmoteClient(token=self.bot.config['tokens']['discord'])
+
 		with open('data/ec-emotes-final.json') as f:
 			self.ec_emotes = json.load(f)
 
@@ -84,6 +87,7 @@ class Emotes(commands.Cog):
 	def cog_unload(self):
 		async def close():
 			await self.http.close()
+			await self.emote_client.close()
 
 			for paginator in self.paginators:
 				await paginator.stop()
@@ -326,6 +330,8 @@ class Emotes(commands.Cog):
 		if not url and not context.message.attachments:
 			raise commands.BadArgument('A URL or attachment must be given.')
 
+		self.emote_client.check_create(context.guild.id)
+
 		url = url or context.message.attachments[0].url
 		async with context.typing():
 			archive = await self.fetch_safe(url, valid_mimetypes=self.ARCHIVE_MIMETYPES)
@@ -363,12 +369,13 @@ class Emotes(commands.Cog):
 
 	async def add_safe(self, context, name, url, author_id, *, reason=None):
 		"""Try to add an emote. Returns a string that should be sent to the user."""
+		self.emote_client.check_create(context.guild.id)
 		try:
 			image_data = await self.fetch_safe(url)
 		except errors.InvalidFileError:
 			raise errors.InvalidImageError
 
-		if type(image_data) is str:  # error case
+		if type(image_data) is str:  # error case (shitty i know)
 			return image_data
 		return await self.add_safe_bytes(context, name, author_id, image_data, reason=reason)
 
@@ -436,8 +443,8 @@ class Emotes(commands.Cog):
 	async def create_emote_from_bytes(self, guild, name, author_id, image_data: bytes, *, reason=None):
 		image_data = await utils.image.resize_in_subprocess(image_data)
 		if reason is None:
-			reason = f'Created by {utils.format_user(self.bot, author_id)}'
-		return await guild.create_custom_emoji(name=name, image=image_data, reason=reason)
+			reason = 'Created by ' + utils.format_user(self.bot, author_id)
+		return await self.emote_client.create(guild_id=guild.id, name=name, image=image_data, reason=reason)
 
 	@commands.command(aliases=('delete', 'delet', 'rm'))
 	async def remove(self, context, emote, *emotes):
@@ -447,7 +454,11 @@ class Emotes(commands.Cog):
 		"""
 		if not emotes:
 			emote = await self.parse_emote(context, emote)
-			await emote.delete(reason=f'Removed by {utils.format_user(self.bot, context.author.id)}')
+			await self.emote_client.delete(
+				guild_id=context.guild.id,
+				emote_id=emote.id,
+				reason='Removed by ' + utils.format_user(self.bot, context.author.id),
+			)
 			await context.send(fr'Emote \:{emote.name}: successfully removed.')
 		else:
 			for emote in (emote,) + emotes:

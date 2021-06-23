@@ -76,7 +76,7 @@ class Emotes(commands.Cog):
 					+ self.bot.http.user_agent
 			})
 
-		self.emote_client = EmoteClient(token=self.bot.config['tokens']['discord'])
+		self.emote_client = EmoteClient(self.bot)
 
 		with open('data/ec-emotes-final.json') as f:
 			self.ec_emotes = json.load(f)
@@ -444,7 +444,7 @@ class Emotes(commands.Cog):
 		image_data = await utils.image.resize_in_subprocess(image_data)
 		if reason is None:
 			reason = 'Created by ' + utils.format_user(self.bot, author_id)
-		return await self.emote_client.create(guild_id=guild.id, name=name, image=image_data, reason=reason)
+		return await self.emote_client.create(guild=guild, name=name, image=image_data, reason=reason)
 
 	@commands.command(aliases=('delete', 'delet', 'rm'))
 	async def remove(self, context, emote, *emotes):

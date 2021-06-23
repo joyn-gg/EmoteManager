@@ -68,7 +68,6 @@ class EmoteClient:
 
 	async def request(self, method, path, guild_id, **kwargs):
 		self._check_rl(method, guild_id)
-		print('post check rl')
 
 		headers = {}
 		# Emote Manager shouldn't use walrus op until Debian adopts 3.8 :(
@@ -80,7 +79,6 @@ class EmoteClient:
 		# TODO handle OSError and 500/502, like dpy does
 		async with self.http.request(method, self.BASE_URL + path, **kwargs) as resp:
 			if resp.status == HTTPStatus.TOO_MANY_REQUESTS:
-				print('handling rl')
 				return await self._handle_rl(resp, method, path, guild_id, **kwargs)
 
 			data = await json_or_text(resp)
@@ -94,17 +92,14 @@ class EmoteClient:
 		try:
 			rls = self.guild_rls[guild_id]
 		except KeyError:
-			print('guild not found', repr(guild_id))
 			return
 
 		if not rls.validate():
-			print('guild rls invalid')
 			del self.guild_rls[guild_id]
 			return
 
 		retry_at = getattr(rls, method, None)
 		if retry_at:
-			print('retry later')
 			raise RateLimitedError(retry_at)
 
 	async def _handle_rl(self, resp, method, path, guild_id, **kwargs):

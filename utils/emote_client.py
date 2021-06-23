@@ -10,6 +10,7 @@ import datetime
 import urllib.parse
 from typing import Dict
 from http import HTTPStatus
+from discord import PartialEmoji
 import utils.image as image_utils
 from utils.errors import RateLimitedError
 from discord import HTTPException, Forbidden, NotFound, DiscordServerError
@@ -60,8 +61,6 @@ class EmoteClient:
 			'Authorization': 'Bot ' + bot.config['tokens']['discord'],
 			'X-Ratelimit-Precision': 'millisecond',
 		})
-		# internals 🤫
-		self._connection_state = bot._connection
 
 	async def request(self, method, path, guild_id, **kwargs):
 		self._check_rl(method, guild_id)
@@ -133,10 +132,7 @@ class EmoteClient:
 			json=dict(name=name, image=image_utils.image_to_base64_url(image), roles=role_ids),
 			reason=reason,
 		)
-		# internals 🤫
-		# this is A) so we can return a bona-fide, authentic, Emoji object,
-		# and B) because it's what dpy does to keep the emoji cache up to date for s
-		return self._connection_state.store_emoji(guild, data)
+		return PartialEmoji(animated=data.get('animated', False), name=data.get('name'), id=data.get('id'))
 
 	async def delete(self, *, guild_id, emote_id, reason=None):
 		return await self.request('DELETE', f'/guilds/{guild_id}/emojis/{emote_id}', guild_id, reason=reason)

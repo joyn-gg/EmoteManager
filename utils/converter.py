@@ -14,9 +14,9 @@
 # along with Emote Manager. If not, see <https://www.gnu.org/licenses/>.
 
 import functools
+from discord.ext.commands import BadArgument
 
 _emote_type_predicates = {
-	'': lambda _: True,  # allow usage as a "consume rest" converter
 	'all': lambda _: True,
 	'static': lambda e: not e.animated,
 	'animated': lambda e: e.animated}
@@ -28,7 +28,10 @@ def emote_type_filter_default(command):
 	@functools.wraps(old_callback)
 	async def callback(self, ctx, *args):
 		image_type = args[-1]
-		image_type = _emote_type_predicates[image_type]
+		try:
+			image_type = _emote_type_predicates[image_type]
+		except KeyError:
+			raise BadArgument(f'Invalid emote type. Specify one of "all", "static", or "animated".')
 		return await old_callback(self, ctx, *args[:-1], image_type)
 
 	command.callback = callback

@@ -18,6 +18,7 @@ import cgi
 import collections
 import contextlib
 import io
+import json
 import logging
 import operator
 import posixpath
@@ -28,18 +29,17 @@ import zipfile
 import warnings
 import weakref
 
-import aioec
 import aiohttp
 import discord
 import humanize
 from discord.ext import commands
 
 import utils
-import utils.archive
 import utils.image
 from utils import errors
-from utils.converter import emote_type_filter_default
 from utils.paginator import ListPaginator
+from utils.emote_client import EmoteClient
+from utils.converter import emote_type_filter_default
 
 logger = logging.getLogger(__name__)
 
@@ -76,17 +76,18 @@ class Emotes(commands.Cog):
 					+ self.bot.http.user_agent
 			})
 
-		self.aioec = aioec.Client(
-			loop=self.bot.loop,
-			connector=connector,
-			base_url=self.bot.config.get('ec_api_base_url'))
+		self.emote_client = EmoteClient(self.bot)
+
+		with open('data/ec-emotes-final.json') as f:
+			self.ec_emotes = json.load(f)
+
 		# keep track of paginators so we can end them when the cog is unloaded
 		self.paginators = weakref.WeakSet()
 
 	def cog_unload(self):
 		async def close():
 			await self.http.close()
-			await self.aioec.close()
+			await self.emote_client.close()
 
 			for paginator in self.paginators:
 				await paginator.stop()
@@ -220,31 +221,25 @@ class Emotes(commands.Cog):
 
 	@commands.command(name='add-from-ec', aliases=['addfromec'])
 	async def add_from_ec(self, context, name, *names):
-		"""Copies one or more emotes from Emote Collector to your server.
-
-		The list of possible emotes you can copy is here:
-		https://ec.emote.bot/list
-		"""
+		"""Copies one or more emotes from Emote Collector to your server."""
 		if names:
 			for name in (name,) + names:
 				await context.invoke(self.add_from_ec, name)
+			await context.message.add_reaction(utils.SUCCESS_EMOJIS[True])
 			return
 
-		name = name.strip(':')
 		try:
-			emote = await self.aioec.emote(name)
-		except aioec.NotFound:
+			emote = self.ec_emotes[name.strip(':').lower()]
+		except KeyError:
 			return await context.send("Emote not found in Emote Collector's database.")
-		except aioec.HttpException as exception:
-			return await context.send(
-				f'Error: the Emote Collector API returned status code {exception.status}')
 
 		reason = (
 			f'Added from Emote Collector by {utils.format_user(self.bot, context.author.id)}. '
-			f'Original emote author: {utils.format_user(self.bot, emote.author)}')
+			f'Original emote author: {utils.format_user(self.bot, emote["author"])}')
 
+		image_url = utils.emote.url(emote['id'], animated=emote['animated'])
 		async with context.typing():
-			message = await self.add_safe(context, name, emote.url, context.author.id, reason=reason)
+			message = await self.add_safe(context, name, image_url, context.author.id, reason=reason)
 
 		await context.send(message)
 
@@ -343,6 +338,8 @@ class Emotes(commands.Cog):
 		if not url and not context.message.attachments:
 			raise commands.BadArgument('A URL or attachment must be given.')
 
+		self.emote_client.check_create(context.guild.id)
+
 		url = url or context.message.attachments[0].url
 		async with context.typing():
 			archive = await self.fetch_safe(url, valid_mimetypes=self.ARCHIVE_MIMETYPES)
@@ -380,12 +377,13 @@ class Emotes(commands.Cog):
 
 	async def add_safe(self, context, name, url, author_id, *, reason=None):
 		"""Try to add an emote. Returns a string that should be sent to the user."""
+		self.emote_client.check_create(context.guild.id)
 		try:
 			image_data = await self.fetch_safe(url)
 		except errors.InvalidFileError:
 			raise errors.InvalidImageError
 
-		if type(image_data) is str:  # error case
+		if type(image_data) is str:  # error case (shitty i know)
 			return image_data
 		return await self.add_safe_bytes(context, name, author_id, image_data, reason=reason)
 
@@ -453,8 +451,8 @@ class Emotes(commands.Cog):
 	async def create_emote_from_bytes(self, guild, name, author_id, image_data: bytes, *, reason=None):
 		image_data = await utils.image.resize_in_subprocess(image_data)
 		if reason is None:
-			reason = f'Created by {utils.format_user(self.bot, author_id)}'
-		return await guild.create_custom_emoji(name=name, image=image_data, reason=reason)
+			reason = 'Created by ' + utils.format_user(self.bot, author_id)
+		return await self.emote_client.create(guild=guild, name=name, image=image_data, reason=reason)
 
 	@commands.command(aliases=('delete', 'delet', 'rm'))
 	async def remove(self, context, emote, *emotes):
@@ -464,7 +462,11 @@ class Emotes(commands.Cog):
 		"""
 		if not emotes:
 			emote = await self.parse_emote(context, emote)
-			await emote.delete(reason=f'Removed by {utils.format_user(self.bot, context.author.id)}')
+			await self.emote_client.delete(
+				guild_id=context.guild.id,
+				emote_id=emote.id,
+				reason='Removed by ' + utils.format_user(self.bot, context.author.id),
+			)
 			await context.send(fr'Emote \:{emote.name}: successfully removed.')
 		else:
 			for emote in (emote,) + emotes:
@@ -557,16 +559,27 @@ class Emotes(commands.Cog):
 
 		emote: the emote to embiggen.
 		"""
-		emote = await self.parse_emote(context, emote)
+		emote = await self.parse_emote(context, emote, local=False)
 		await context.send(f'{emote.name}: {emote.url}')
 
-	async def parse_emote(self, context, name_or_emote):
+	async def parse_emote(self, context, name_or_emote, *, local=True):
+		# this function is mostly synchronous,
+		# so we yield in order to let the emoji cache update between repeated calls
+		await asyncio.sleep(0)
+
 		match = utils.emote.RE_CUSTOM_EMOTE.match(name_or_emote)
 		if match:
-			id = int(match.group('id'))
-			emote = discord.utils.get(context.guild.emojis, id=id)
-			if emote:
-				return emote
+			id = int(match['id'])
+			if local:
+				emote = discord.utils.get(context.guild.emojis, id=id)
+				if emote:
+					return emote
+			else:
+				return discord.PartialEmoji(
+					animated=bool(match['animated']),
+					name=match['name'],
+					id=int(match['id']),
+				)
 		name = name_or_emote
 		return await self.disambiguate(context, name)
 

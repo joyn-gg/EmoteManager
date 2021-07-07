@@ -6,6 +6,8 @@ from . import emote
 from . import errors
 from . import paginator
 from . import compat
-from . import emote_client
 # note: do not import .image in case the user doesn't want it
 # since importing image can take a long time.
+# Do not import .emote_client, either, because otherwise running python -m utils.image
+# will cause utils.image to appear in sys.modules after import of package 'utils' but
+# prior to execution of 'utils.image' which may result in unpredictable behavior.

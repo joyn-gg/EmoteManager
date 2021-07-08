@@ -15,24 +15,6 @@ import utils.image as image_utils
 from utils.errors import RateLimitedError
 from discord import HTTPException, Forbidden, NotFound, DiscordServerError
 
-class GuildRetryTimes:
-	"""Holds the times, for a particular guild,
-	that we have to wait until for the rate limit for a particular HTTP method to elapse.
-	"""
-	__slots__ = frozenset({'POST', 'DELETE'})
-
-	def __init__(self, POST=None, DELETE=None):
-		self.POST = POST
-		self.DELETE = DELETE
-
-	def validate(self):
-		now = datetime.datetime.now(tz=datetime.timezone.utc).timestamp()
-		if self.POST and self.POST < now:
-			self.POST = None
-		if self.DELETE and self.DELETE < now:
-			self.DELETE = None
-		return self.POST or self.DELETE
-
 GuildId = int
 
 async def json_or_text(resp):
@@ -55,7 +37,7 @@ class EmoteClient:
 	}
 
 	def __init__(self, bot):
-		self.guild_rls: Dict[GuildId, GuildRetryTimes] = {}
+		self.guild_rls: Dict[GuildId, float] = {}
 		self.http = aiohttp.ClientSession(headers={
 			'User-Agent': bot.config['user_agent'] + ' ' + bot.http.user_agent,
 			'Authorization': 'Bot ' + bot.config['tokens']['discord'],
@@ -63,7 +45,7 @@ class EmoteClient:
 		})
 
 	async def request(self, method, path, guild_id, **kwargs):
-		self._check_rl(method, guild_id)
+		self.check_rl(guild_id)
 
 		headers = {}
 		# Emote Manager shouldn't use walrus op until Debian adopts 3.8 :(
@@ -84,46 +66,35 @@ class EmoteClient:
 			error_cls = self.HTTP_ERROR_CLASSES.get(resp.status, HTTPException)
 			raise error_cls(resp, data)
 
-	def _check_rl(self, method, guild_id):
+	# optimization method that lets us check the RL before downloading the user's image.
+	# also lets us preemptively check the RL before doing a request
+	def check_rl(self, guild_id):
 		try:
-			rls = self.guild_rls[guild_id]
+			retry_at = self.guild_rls[guild_id]
 		except KeyError:
 			return
 
-		if not rls.validate():
+		now = datetime.datetime.now(tz=datetime.timezone.utc).timestamp()
+		if retry_at < now:
 			del self.guild_rls[guild_id]
 			return
 
-		retry_at = getattr(rls, method, None)
-		if retry_at:
-			raise RateLimitedError(retry_at)
+		raise RateLimitedError(retry_at)
 
 	async def _handle_rl(self, resp, method, path, guild_id, **kwargs):
 		retry_after = (await resp.json())['retry_after'] / 1000.0
 		retry_at = datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(seconds=retry_after)
 
 		# cache unconditionally in case request() is called again while we're sleeping
-		try:
-			rls = self.guild_rls[guild_id]
-		except KeyError:
-			self.guild_rls[guild_id] = rls = GuildRetryTimes()
+		self.guild_rls[guild_id] = retry_at.timestamp()
 
-		setattr(rls, resp.method, retry_at.timestamp())
-
-		if resp.method not in GuildRetryTimes.__slots__ or retry_after < 10.0:
+		if retry_after < 10.0:
 			await asyncio.sleep(retry_after)
 			# woo mutual recursion
 			return await self.request(method, path, guild_id, **kwargs)
 
 		# we've been hit with one of those crazy high rate limits, which only occur for specific methods
 		raise RateLimitedError(retry_at)
-
-	# optimization methods that let us check the RLs before downloading the user's image
-	def check_create(self, guild_id):
-		self._check_rl('POST', guild_id)
-
-	def check_delete(self, guild_id):
-		self._check_rl('DELETE', guild_id)
 
 	async def create(self, *, guild, name, image: bytes, role_ids=(), reason=None):
 		data = await self.request(
@@ -133,9 +104,6 @@ class EmoteClient:
 			reason=reason,
 		)
 		return PartialEmoji(animated=data.get('animated', False), name=data.get('name'), id=data.get('id'))
-
-	async def delete(self, *, guild_id, emote_id, reason=None):
-		return await self.request('DELETE', f'/guilds/{guild_id}/emojis/{emote_id}', guild_id, reason=reason)
 
 	async def __aenter__(self):
 		self.http = await self.http.__aenter__()

@@ -330,7 +330,7 @@ class Emotes(commands.Cog):
 		if not url and not context.message.attachments:
 			raise commands.BadArgument('A URL or attachment must be given.')
 
-		self.emote_client.check_create(context.guild.id)
+		self.emote_client.check_rl(context.guild.id)
 
 		url = url or context.message.attachments[0].url
 		async with context.typing():
@@ -369,7 +369,7 @@ class Emotes(commands.Cog):
 
 	async def add_safe(self, context, name, url, author_id, *, reason=None):
 		"""Try to add an emote. Returns a string that should be sent to the user."""
-		self.emote_client.check_create(context.guild.id)
+		self.emote_client.check_rl(context.guild.id)
 		try:
 			image_data = await self.fetch_safe(url)
 		except errors.InvalidFileError:
@@ -454,11 +454,7 @@ class Emotes(commands.Cog):
 		"""
 		if not emotes:
 			emote = await self.parse_emote(context, emote)
-			await self.emote_client.delete(
-				guild_id=context.guild.id,
-				emote_id=emote.id,
-				reason='Removed by ' + utils.format_user(self.bot, context.author.id),
-			)
+			await emote.delete(reason='Removed by ' + utils.format_user(self.bot, context.author.id))
 			await context.send(fr'Emote \:{emote.name}: successfully removed.')
 		else:
 			for emote in (emote,) + emotes:

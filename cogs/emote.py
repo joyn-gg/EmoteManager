@@ -141,7 +141,7 @@ class Emotes(commands.Cog):
 		"""
 		name, url = self.parse_add_command_args(context, args)
 		async with context.typing():
-			message = await self.add_safe(context, name, url, context.message.author.id)
+			message = await self.add_safe(context, name, url)
 		await context.send(message)
 
 	@commands.command(name='add-these')
@@ -156,7 +156,7 @@ class Emotes(commands.Cog):
 			animated, name, id = match.groups()
 			image_url = utils.emote.url(id, animated=animated)
 			async with context.typing():
-				message = await self.add_safe(context, name, image_url, context.author.id)
+				message = await self.add_safe(context, name, image_url)
 				await context.send(message)
 
 		if not ran:
@@ -226,12 +226,12 @@ class Emotes(commands.Cog):
 			return await context.send("Emote not found in Emote Collector's database.")
 
 		reason = (
-			f'Added from Emote Collector by {utils.format_user(self.bot, context.author.id)}. '
-			f'Original emote author: {utils.format_user(self.bot, emote["author"])}')
+			f'Added from Emote Collector by {utils.format_user(context.author)}. '
+			f'Original emote author ID: {emote["author"]}')
 
 		image_url = utils.emote.url(emote['id'], animated=emote['animated'])
 		async with context.typing():
-			message = await self.add_safe(context, name, image_url, context.author.id, reason=reason)
+			message = await self.add_safe(context, name, image_url, reason=reason)
 
 		await context.send(message)
 
@@ -354,7 +354,7 @@ class Emotes(commands.Cog):
 			if error is None:
 				name = self.format_emote_filename(posixpath.basename(name))
 				async with context.typing():
-					message = await self.add_safe_bytes(context, name, context.author.id, img)
+					message = await self.add_safe_bytes(context, name, img)
 				await context.send(message)
 				continue
 
@@ -367,7 +367,7 @@ class Emotes(commands.Cog):
 
 			await context.send(f'{name}: {error}')
 
-	async def add_safe(self, context, name, url, author_id, *, reason=None):
+	async def add_safe(self, context, name, url, *, reason=None):
 		"""Try to add an emote. Returns a string that should be sent to the user."""
 		self.emote_client.check_rl(context.guild.id)
 		try:
@@ -377,7 +377,7 @@ class Emotes(commands.Cog):
 
 		if type(image_data) is str:  # error case (shitty i know)
 			return image_data
-		return await self.add_safe_bytes(context, name, author_id, image_data, reason=reason)
+		return await self.add_safe_bytes(context, name, image_data, reason=reason)
 
 	async def fetch_safe(self, url, valid_mimetypes=None, *, validate_headers=False):
 		"""Try to fetch a URL. On error return a string that should be sent to the user."""
@@ -390,7 +390,7 @@ class Emotes(commands.Cog):
 		except aiohttp.ClientResponseError as exc:
 			raise errors.HTTPException(exc.status)
 
-	async def add_safe_bytes(self, context, name, author_id, image_data: bytes, *, reason=None):
+	async def add_safe_bytes(self, context, name, image_data: bytes, *, reason=None):
 		"""Try to add an emote from bytes. On error, return a string that should be sent to the user.
 
 		If the image is static and there are not enough free static slots, convert the image to a gif instead.
@@ -408,7 +408,7 @@ class Emotes(commands.Cog):
 			converted = True
 
 		try:
-			emote = await self.create_emote_from_bytes(context.guild, name, author_id, image_data, reason=reason)
+			emote = await self.create_emote_from_bytes(context, name, image_data, reason=reason)
 		except discord.InvalidArgument:
 			return discord.utils.escape_mentions(f'{name}: The file supplied was not a valid GIF, PNG, JPEG, or WEBP file.')
 		except discord.HTTPException as ex:
@@ -440,11 +440,11 @@ class Emotes(commands.Cog):
 		if validate_headers: await validate(self.http.head(url, timeout=self.bot.config.get('http_head_timeout', 10)))
 		return await validate(self.http.get(url))
 
-	async def create_emote_from_bytes(self, guild, name, author_id, image_data: bytes, *, reason=None):
+	async def create_emote_from_bytes(self, context, name, image_data: bytes, *, reason=None):
 		image_data = await utils.image.resize_in_subprocess(image_data)
 		if reason is None:
-			reason = 'Created by ' + utils.format_user(self.bot, author_id)
-		return await self.emote_client.create(guild=guild, name=name, image=image_data, reason=reason)
+			reason = 'Created by ' + utils.format_user(context.author)
+		return await self.emote_client.create(guild=context.guild, name=name, image=image_data, reason=reason)
 
 	@commands.command(aliases=('delete', 'delet', 'rm'))
 	async def remove(self, context, emote, *emotes):
@@ -454,7 +454,7 @@ class Emotes(commands.Cog):
 		"""
 		if not emotes:
 			emote = await self.parse_emote(context, emote)
-			await emote.delete(reason='Removed by ' + utils.format_user(self.bot, context.author.id))
+			await emote.delete(reason='Removed by ' + utils.format_user(context.author))
 			await context.send(fr'Emote \:{emote.name}: successfully removed.')
 		else:
 			for emote in (emote,) + emotes:
@@ -473,7 +473,7 @@ class Emotes(commands.Cog):
 		try:
 			await emote.edit(
 				name=new_name,
-				reason=f'Renamed by {utils.format_user(self.bot, context.author.id)}')
+				reason=f'Renamed by {utils.format_user(context.author)}')
 		except discord.HTTPException as ex:
 			return await context.send(
 				'An error occurred while renaming the emote:\n'

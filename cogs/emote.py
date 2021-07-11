@@ -441,7 +441,8 @@ class Emotes(commands.Cog):
 		return await validate(self.http.get(url))
 
 	async def create_emote_from_bytes(self, context, name, image_data: bytes, *, reason=None):
-		image_data = await utils.image.resize_in_subprocess(image_data)
+		if len(image_data) > 256 * 1024:
+			image_data = await utils.image.resize_in_subprocess(image_data)
 		if reason is None:
 			reason = 'Created by ' + utils.format_user(context.author)
 		return await self.emote_client.create(guild=context.guild, name=name, image=image_data, reason=reason)

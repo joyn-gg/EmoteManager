@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+# © lambda#0987 <lambda@lambda.dance>
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 from .misc import *
 from . import archive

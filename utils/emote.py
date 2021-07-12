@@ -13,6 +13,9 @@ RE_EMOTE = re.compile(r'(:|;)(?P<name>\w{2,32})\1|(?P<newline>\n)', re.ASCII)
 """Matches only custom server emotes."""
 RE_CUSTOM_EMOTE = re.compile(r'<(?P<animated>a?):(?P<name>\w{2,32}):(?P<id>\d{17,})>', re.ASCII)
 
+"""Matches all characters that are not alphanumeric or an underscore."""
+RE_NAME = re.compile(r'[^\w]', re.ASCII)
+
 def url(id, *, animated: bool = False):
 	"""Convert an emote ID to the image URL for that emote."""
 	extension = 'gif' if animated else 'png'

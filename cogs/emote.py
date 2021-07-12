@@ -173,6 +173,14 @@ class Emotes(commands.Cog):
 			return name, url
 
 		elif len(args) >= 2:
+			if utils.emote.RE_NAME.search(args[0]):
+				raise commands.BadArgument(
+					'Emote name should only contain alphanumeric characters and underscores!')
+			
+			if not 32 >= len(args[0]) >= 2:
+				raise commands.BadArgument(
+					'Emote name should be between 2 and 32 characters long!')
+
 			name = args[0]
 			match = utils.emote.RE_CUSTOM_EMOTE.match(args[1])
 			if match is None:
@@ -459,6 +467,15 @@ class Emotes(commands.Cog):
 		new_name: what you'd like to rename it to
 		"""
 		emote = await self.parse_emote(context, old)
+
+		if utils.emote.RE_NAME.search(new_name):
+			raise commands.BadArgument(
+				'New name should only contain alphanumeric characters and underscores!')
+			
+		if not 32 >= len(new_name) >= 2:
+			raise commands.BadArgument(
+				'New name should be between 2 and 32 characters long!')
+
 		try:
 			await emote.edit(
 				name=new_name,

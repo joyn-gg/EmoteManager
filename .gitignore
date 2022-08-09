@@ -7,11 +7,21 @@ __pycache__/
 .venv/
 venv/
 
-/config.py
-/data/config.py
+.idea/
+idea/
+
 /data/guild_counts.json
 
+# EM - Ignore Images
 *.png
 *.gif
 *.jpg
 *.zip
+
+# Ignore local configs and secrets
+scripts/*_configuration.json
+config/secrets/*
+!config/secrets/example
+
+# Ignore VSCode configs
+.vscode/

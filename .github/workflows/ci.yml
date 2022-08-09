@@ -1,0 +1,65 @@
+name: ci/cd
+
+on:
+  push:
+    branches:
+    - staging
+    tags:
+      - '*'
+
+jobs:
+
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: build
+      env:
+        STAGING_SECRET_PAYLOAD: ${{ secrets.STAGING_SECRET_PAYLOAD }}
+        PRODUCTION_SECRET_PAYLOAD: ${{ secrets.PRODUCTION_SECRET_PAYLOAD }}
+      run: |
+        #-- Setup secrets and version tag ----------
+        shopt -s extglob
+
+        case "${GITHUB_REF}" in
+        */staging)
+          VERSION="staging-${GITHUB_SHA}"
+          SECRET_PAYLOAD="${STAGING_SECRET_PAYLOAD}"
+          echo "Using staging tagging rules: ${VERSION}"
+          ;;
+
+        */v+([0-9]).+([0-9]).+([0-9]))
+          VERSION="$(echo ${GITHUB_REF} | cut -d '/' -f 3)"
+          SECRET_PAYLOAD="${PRODUCTION_SECRET_PAYLOAD}"
+          echo "Using release tagging rules: ${VERSION}"
+          ;;
+
+        *)
+          echo "Ignoring ref (${GITHUB_REF}) with no tagging rules"
+          exit 0
+          ;;
+        esac
+
+
+        #-- Build Docker image ----------
+        echo "Building container..."
+        docker build                                                                                 \
+          --file dockerfiles/emote_manager.dockerfile                                                \
+          --build-arg WORKING_DIRECTORY="/opt/${PROJECT_OWNER}/${PROJECT_NAME}"                      \
+          --tag emote_manager:latest                                                                 \
+          .
+
+
+        #-- Push image to AWS ----------
+        echo "Logging into AWS ECR..."
+        AWS_ACCESS_KEY_ID=$(echo $SECRET_PAYLOAD | jq -r '.aws.publisher_access_key_id') \
+        AWS_SECRET_ACCESS_KEY=$(echo $SECRET_PAYLOAD | jq -r '.aws.publisher_secret_access_key') \
+        aws ecr get-login-password --region $(echo $SECRET_PAYLOAD | jq -r '.aws.region') | \
+          docker login --username AWS --password-stdin $(echo $SECRET_PAYLOAD | jq -r '.aws.repository_authority')/$(echo $SECRET_PAYLOAD | jq -r '.aws.repository_name')
+
+        DOCKER_IMAGE_TAG="$(echo $SECRET_PAYLOAD | jq -r '.aws.repository_authority')/$(echo $SECRET_PAYLOAD | jq -r '.aws.repository_name'):${VERSION}"
+        echo "Docker image: ${DOCKER_IMAGE_TAG}"
+        docker tag emote_manager:latest "${DOCKER_IMAGE_TAG}"
+
+        echo "Pushing image..."
+        docker push "${DOCKER_IMAGE_TAG}"

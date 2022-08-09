@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#-- Requirements ---------------------------------------------------------------------------------------------------------------
+command -v jq     >/dev/null 2>&2 || { echo >&2 "jq is required but is not available, aborting...";     exit 1; }
+command -v docker >/dev/null 2>&2 || { echo >&2 "docker is required but is not available, aborting..."; exit 1; }
+
+#-- Imported Variables ---------------------------------------------------------------------------------------------------------
+project_name=$(cat < ./scripts/scripts_configuration.json | jq -r '.project_name')
+project_owner=$(cat < ./scripts/scripts_configuration.json | jq -r '.project_owner')
+
+#-- Preconditions --------------------------------------------------------------------------------------------------------------
+echo "ATTENTION: This is a brute force script, you may see error messages during it's execution. Be sure to check your images and containers after to verify results."
+read -rp "Press enter to continue"
+
+running_containers=$(sudo docker container ls -q --filter name="${project_owner}_${project_name}_ephemeral*")
+sudo docker container stop ${running_containers}
+
+#-- Execute --------------------------------------------------------------------------------------------------------------------
+constructed_containers=$(sudo docker container ls --all -q --filter name="${project_owner}_${project_name}_ephemeral*")
+sudo docker container rm ${constructed_containers}
+
+constructed_images=$(sudo docker image ls -q --filter reference=${project_owner}/${project_name}_*)
+sudo docker image rm ${constructed_images}
+
+#-- After Actions --------------------------------------------------------------------------------------------------------------
+running_containers=$(sudo docker container ls --filter name="${project_owner}_${project_name}_ephemeral*")
+echo "${running_containers}"
+
+constructed_images=$(sudo docker image ls --filter reference=${project_owner}/${project_name}_*)
+echo "${constructed_images}"

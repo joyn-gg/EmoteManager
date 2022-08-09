@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#-- Requirements ---------------------------------------------------------------------------------------------------------------
+command -v jq     >/dev/null 2>&2 || { echo >&2 "jq is required but is not available, aborting...";     return 1; }
+command -v docker >/dev/null 2>&2 || { echo >&2 "docker is required but is not available, aborting..."; return 1; }
+
+#-- Imported Variables ---------------------------------------------------------------------------------------------------------
+target=$1
+if [ -z "${target}" ]; then ls config/secrets && read -rp "Which environment would you like to target? Type your full answer here and press enter: " target; fi
+
+#-- Preconditions --------------------------------------------------------------------------------------------------------------
+/bin/bash ./scripts/helpers/_network_stage "${target}"
+/bin/bash ./scripts/helpers/bot_build_image
+
+#-- Execute --------------------------------------------------------------------------------------------------------------------
+/bin/bash ./scripts/helpers/bot_container_run "${target}"

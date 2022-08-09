@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#-- Requirements ---------------------------------------------------------------------------------------------------------------
+command -v jq     >/dev/null 2>&2 || { echo >&2 "jq is required but is not available, aborting...";     exit 1; }
+command -v docker >/dev/null 2>&2 || { echo >&2 "docker is required but is not available, aborting..."; exit 1; }
+
+#-- Imported Variables ---------------------------------------------------------------------------------------------------------
+project_name=$(cat < ./scripts/scripts_configuration.json | jq -r '.project_name')
+project_owner=$(cat < ./scripts/scripts_configuration.json | jq -r '.project_owner')
+
+target=$1
+if [ -z "${target}" ]; then ls config/secrets && read -rp "Which environment would you like to target? Type your full answer here and press enter: " target; fi
+
+network_name=$(cat < "./config/secrets/${target}/script_secrets.json"  | jq -r '.secrets.network_name')
+
+discord_token=$(cat < "./config/secrets/${target}/script_secrets.json" | jq -r '.secrets.discord_token')
+discord_shards_per_process=$(cat < "./config/secrets/${target}/script_secrets.json" | jq -r '.secrets.discord_shards_per_process')
+discord_shard_count=$(cat < "./config/secrets/${target}/script_secrets.json" | jq -r '.secrets.discord_shard_count')
+
+bot_prefix=$(cat < "./config/secrets/${target}/script_secrets.json" | jq -r '.secrets.bot_prefix')
+bot_version=$(hostname)
+bot_log_level=$(cat < "./config/secrets/${target}/script_secrets.json" | jq -r '.secrets.bot_log_level')
+
+working_directory="/opt/${project_owner}/${project_name}"
+
+#-- Assume image exists --------------------------------------------------------------------------------------------------------
+image_tag="${project_owner}/${project_name}_emote_manager"
+
+#-- Create container for ephemeral use -----------------------------------------------------------------------------------------
+container_name="${project_owner}_${project_name}_ephemeral_emote_manager"
+sudo docker run \
+  --name "${container_name}" \
+  --network "${network_name}" \
+  \
+  \
+  --env DISCORD_TOKEN="${discord_token}" \
+  --env DISCORD_SHARDS_PER_PROCESS="${discord_shards_per_process}" \
+  --env DISCORD_SHARD_COUNT="${discord_shard_count}" \
+  \
+  --env BOT_PREFIX="${bot_prefix}" \
+  --env BOT_VERSION="${bot_version}" \
+  --env BOT_LOG_LEVEL="${bot_log_level}" \
+  \
+  --interactive --tty \
+  --rm \
+  "${image_tag}"

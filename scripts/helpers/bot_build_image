@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#-- Requirements ---------------------------------------------------------------------------------------------------------------
+command -v jq     >/dev/null 2>&2 || { echo >&2 "jq is required but is not available, aborting...";     exit 1; }
+command -v docker >/dev/null 2>&2 || { echo >&2 "docker is required but is not available, aborting..."; exit 1; }
+
+#-- Imported Variables ---------------------------------------------------------------------------------------------------------
+project_name=$(cat < ./scripts/scripts_configuration.json | jq -r '.project_name')
+project_owner=$(cat < ./scripts/scripts_configuration.json | jq -r '.project_owner')
+
+working_directory="/opt/${project_owner}/${project_name}"
+
+#-- Create container for ephemeral use -----------------------------------------------------------------------------------------
+image_tag="${project_owner}/${project_name}_emote_manager"
+sudo docker build                                                             \
+  --file dockerfiles/${project_name}.dockerfile                               \
+  --build-arg WORKING_DIRECTORY="${working_directory}"                        \
+  --tag "${image_tag}"                                                        \
+  ./

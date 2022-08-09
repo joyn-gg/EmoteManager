@@ -1,0 +1,54 @@
+name: Lint
+
+on:
+  push:
+    branches-ignore:
+      - staging
+      - master
+  pull_request:
+    branches-ignore:
+      - master
+
+jobs:
+  run-linters:
+    name: Run linters
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v2
+
+      - name: check the file list
+        run: |
+          ls -al
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install Python dependencies
+        run: pip install pylint flake8 bandit discord.py-stubs sqlalchemy-stubs -r ./requirements.txt flake8-print
+
+      - name: i18n
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:$(readlink -f ./lint)"
+          ls -al
+          find . -name '*.py' -print0 \
+            | xargs -0 pylint --load-plugins=pylint_i18n --disable=all --enable=E9118,W9118
+        continue-on-error: true
+
+
+      - name: Run linters
+        uses: wearerequired/lint-action@v1
+        continue-on-error: true
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Enable linters
+          flake8: true
+
+      - name: Run Security Check
+        uses: jpetrucciani/bandit-check@master
+        continue-on-error: true
+        with:
+          path: './bot'
